@@ -60,6 +60,18 @@ language-portuguese = Português
 language-option = Idioma: { $language }
 language-changed = Idioma alterado para { $language }.
 
+# Estados de opções booleanas
+option-on = Ligado
+option-off = Desligado
+
+# Opções de som
+turn-sound-option = Som de turno: { $status }
+
+# Opções de dados
+clear-kept-option = Limpar dados mantidos ao rolar: { $status }
+dice-keeping-style-option = Estilo de manter dados: { $style }
+dice-keeping-style-changed = Estilo de manter dados definido para { $style }.
+
 # Nomes de bots
 cancel = Cancelar
 no-bot-names-available = Nenhum nome de bot disponível.
@@ -131,6 +143,7 @@ leaderboard-no-player-rating = Você ainda não tem classificação neste jogo.
 my-stats = Minhas Estatísticas
 my-stats-select-game = Selecione um jogo para ver suas estatísticas
 my-stats-no-data = Você ainda não jogou este jogo.
+my-stats-no-games = Você ainda não jogou nenhum jogo.
 my-stats-header = { $game } - Suas Estatísticas
 my-stats-wins = Vitórias: { $value }
 my-stats-losses = Derrotas: { $value }

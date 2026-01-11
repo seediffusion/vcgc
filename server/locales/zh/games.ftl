@@ -1,6 +1,9 @@
 # PlayPalace 共享游戏消息 (简体中文)
 # 这些消息在多个游戏中通用
 
+# 游戏名称
+game-name-ninetynine = 九十九
+
 # 回合和轮次流程
 game-round-start = 第 { $round } 回合。
 game-round-end = 第 { $round } 回合结束。
@@ -42,6 +45,11 @@ game-leave = 离开游戏
 round-timer-paused = { $player } 已暂停游戏 (按 p 开始下一回合)。
 round-timer-resumed = 回合计时器已恢复。
 round-timer-countdown = 下一回合倒计时 { $seconds } 秒...
+
+# 骰子游戏 - 保留/释放骰子
+dice-keeping = 保留 { $value }。
+dice-rerolling = 重掷 { $value }。
+dice-locked = 该骰子已锁定，无法更改。
 
 # 发牌 (纸牌游戏)
 game-deal-counter = 发牌 { $current }/{ $total }。

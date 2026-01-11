@@ -1,7 +1,9 @@
 """WebSocket server for client connections."""
 
 import json
+import ssl
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Coroutine
 import websockets
 from websockets.server import WebSocketServerProtocol
@@ -46,6 +48,8 @@ class WebSocketServer:
         on_connect: Callable[[ClientConnection], Coroutine] | None = None,
         on_disconnect: Callable[[ClientConnection], Coroutine] | None = None,
         on_message: Callable[[ClientConnection, dict], Coroutine] | None = None,
+        ssl_cert: str | Path | None = None,
+        ssl_key: str | Path | None = None,
     ):
         self.host = host
         self.port = port
@@ -55,6 +59,12 @@ class WebSocketServer:
         self._clients: dict[str, ClientConnection] = {}
         self._server: websockets.WebSocketServer | None = None
         self._running = False
+        self._ssl_context = None
+
+        # Configure SSL if certificates provided
+        if ssl_cert and ssl_key:
+            self._ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            self._ssl_context.load_cert_chain(str(ssl_cert), str(ssl_key))
 
     @property
     def clients(self) -> dict[str, ClientConnection]:
@@ -68,8 +78,10 @@ class WebSocketServer:
             self._handle_client,
             self.host,
             self.port,
+            ssl=self._ssl_context,
         )
-        print(f"WebSocket server started on ws://{self.host}:{self.port}")
+        protocol = "wss" if self._ssl_context else "ws"
+        print(f"WebSocket server started on {protocol}://{self.host}:{self.port}")
 
     async def stop(self) -> None:
         """Stop the WebSocket server."""

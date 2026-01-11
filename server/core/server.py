@@ -37,9 +37,13 @@ class Server:
         port: int = 8000,
         db_path: str = "playpalace.db",
         locales_dir: str | Path | None = None,
+        ssl_cert: str | Path | None = None,
+        ssl_key: str | Path | None = None,
     ):
         self.host = host
         self.port = port
+        self._ssl_cert = ssl_cert
+        self._ssl_key = ssl_key
 
         # Initialize components
         self._db = Database(db_path)
@@ -76,6 +80,8 @@ class Server:
             on_connect=self._on_client_connect,
             on_disconnect=self._on_client_disconnect,
             on_message=self._on_client_message,
+            ssl_cert=self._ssl_cert,
+            ssl_key=self._ssl_key,
         )
         await self._ws_server.start()
 
@@ -83,7 +89,8 @@ class Server:
         self._tick_scheduler = TickScheduler(self._on_tick)
         await self._tick_scheduler.start()
 
-        print(f"Server running on ws://{self.host}:{self.port}")
+        protocol = "wss" if self._ssl_cert else "ws"
+        print(f"Server running on {protocol}://{self.host}:{self.port}")
 
     async def stop(self) -> None:
         """Stop the server."""
@@ -1139,33 +1146,6 @@ class Server:
                 )
             )
 
-        # Player's own stats (keyed by UUID)
-        if user.uuid in player_stats:
-            stats = player_stats[user.uuid]
-            wins = stats["wins"]
-            losses = stats["losses"]
-            total = wins + losses
-            percentage = round((wins / total * 100) if total > 0 else 0)
-            items.append(
-                MenuItem(
-                    text=Localization.get(
-                        user.locale,
-                        "leaderboard-player-stats",
-                        wins=wins,
-                        losses=losses,
-                        percentage=percentage,
-                    ),
-                    id="player_stats",
-                )
-            )
-        else:
-            items.append(
-                MenuItem(
-                    text=Localization.get(user.locale, "leaderboard-no-player-stats"),
-                    id="player_stats",
-                )
-            )
-
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
 
         user.show_menu(
@@ -1227,29 +1207,6 @@ class Server:
                         id=f"entry_{rank}",
                     )
                 )
-
-        # User's own rating
-        user_rating = rating_helper.get_rating(user.uuid)
-        if user_rating.mu != RatingHelper.DEFAULT_MU:
-            items.append(
-                MenuItem(
-                    text=Localization.get(
-                        user.locale,
-                        "leaderboard-player-rating",
-                        rating=round(user_rating.ordinal),
-                        mu=round(user_rating.mu, 1),
-                        sigma=round(user_rating.sigma, 1),
-                    ),
-                    id="player_rating",
-                )
-            )
-        else:
-            items.append(
-                MenuItem(
-                    text=Localization.get(user.locale, "leaderboard-no-player-rating"),
-                    id="player_rating",
-                )
-            )
 
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
 
@@ -1623,17 +1580,31 @@ class Server:
     # =========================================================================
 
     def _show_my_stats_menu(self, user: NetworkUser) -> None:
-        """Show game selection menu for personal stats."""
+        """Show game selection menu for personal stats (only games user has played)."""
         categories = GameRegistry.get_by_category()
         items = []
 
-        # Add all games from all categories
+        # Add only games where the user has stats
         for category_key in sorted(categories.keys()):
             for game_class in categories[category_key]:
-                game_name = Localization.get(user.locale, game_class.get_name_key())
-                items.append(
-                    MenuItem(text=game_name, id=f"stats_{game_class.get_type()}")
+                game_type = game_class.get_type()
+                # Check if user has played this game
+                game_results = self._get_game_results(game_type)
+                has_stats = any(
+                    p.player_id == user.uuid
+                    for result in game_results
+                    for p in result.player_results
                 )
+                if has_stats:
+                    game_name = Localization.get(user.locale, game_class.get_name_key())
+                    items.append(
+                        MenuItem(text=game_name, id=f"stats_{game_type}")
+                    )
+
+        if not items:
+            user.speak_l("my-stats-no-games")
+            self._show_main_menu(user)
+            return
 
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
 
@@ -1685,85 +1656,80 @@ class Server:
                     if score > high_score:
                         high_score = score
 
-        items = []
-
         if games_played == 0:
+            user.speak_l("my-stats-no-data")
+            return
+
+        items = []
+        # Basic stats
+        winrate = round((wins / games_played * 100) if games_played > 0 else 0)
+
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "my-stats-games-played", value=games_played),
+                id="games_played",
+            )
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "my-stats-wins", value=wins),
+                id="wins",
+            )
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "my-stats-losses", value=losses),
+                id="losses",
+            )
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "my-stats-winrate", value=winrate),
+                id="winrate",
+            )
+        )
+
+        # Score stats (if applicable)
+        if total_score > 0:
             items.append(
                 MenuItem(
-                    text=Localization.get(user.locale, "my-stats-no-data"),
-                    id="no_data",
+                    text=Localization.get(user.locale, "my-stats-total-score", value=total_score),
+                    id="total_score",
+                )
+            )
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "my-stats-high-score", value=high_score),
+                    id="high_score",
+                )
+            )
+
+        # Skill rating
+        rating_helper = RatingHelper(self._db, game_type)
+        rating = rating_helper.get_rating(user.uuid)
+        if rating.mu != 25.0 or rating.sigma != 25.0 / 3:  # Non-default rating
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "my-stats-rating",
+                        value=round(rating.ordinal),
+                        mu=round(rating.mu, 1),
+                        sigma=round(rating.sigma, 1),
+                    ),
+                    id="rating",
                 )
             )
         else:
-            # Basic stats
-            winrate = round((wins / games_played * 100) if games_played > 0 else 0)
-
             items.append(
                 MenuItem(
-                    text=Localization.get(user.locale, "my-stats-games-played", value=games_played),
-                    id="games_played",
-                )
-            )
-            items.append(
-                MenuItem(
-                    text=Localization.get(user.locale, "my-stats-wins", value=wins),
-                    id="wins",
-                )
-            )
-            items.append(
-                MenuItem(
-                    text=Localization.get(user.locale, "my-stats-losses", value=losses),
-                    id="losses",
-                )
-            )
-            items.append(
-                MenuItem(
-                    text=Localization.get(user.locale, "my-stats-winrate", value=winrate),
-                    id="winrate",
+                    text=Localization.get(user.locale, "my-stats-no-rating"),
+                    id="no_rating",
                 )
             )
 
-            # Score stats (if applicable)
-            if total_score > 0:
-                items.append(
-                    MenuItem(
-                        text=Localization.get(user.locale, "my-stats-total-score", value=total_score),
-                        id="total_score",
-                    )
-                )
-                items.append(
-                    MenuItem(
-                        text=Localization.get(user.locale, "my-stats-high-score", value=high_score),
-                        id="high_score",
-                    )
-                )
-
-            # Skill rating
-            rating_helper = RatingHelper(self._db, game_type)
-            rating = rating_helper.get_rating(user.uuid)
-            if rating.mu != 25.0 or rating.sigma != 25.0 / 3:  # Non-default rating
-                items.append(
-                    MenuItem(
-                        text=Localization.get(
-                            user.locale,
-                            "my-stats-rating",
-                            value=round(rating.ordinal),
-                            mu=round(rating.mu, 1),
-                            sigma=round(rating.sigma, 1),
-                        ),
-                        id="rating",
-                    )
-                )
-            else:
-                items.append(
-                    MenuItem(
-                        text=Localization.get(user.locale, "my-stats-no-rating"),
-                        id="no_rating",
-                    )
-                )
-
-            # Game-specific stats from custom leaderboard configs
-            self._add_custom_stats(user, game_class, game_results, items)
+        # Game-specific stats from custom leaderboard configs
+        self._add_custom_stats(user, game_class, game_results, items)
 
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
 
@@ -2043,9 +2009,21 @@ class Server:
         await client.send({"type": "pong"})
 
 
-async def run_server(host: str = "0.0.0.0", port: int = 8000) -> None:
-    """Run the server."""
-    server = Server(host=host, port=port)
+async def run_server(
+    host: str = "0.0.0.0",
+    port: int = 8000,
+    ssl_cert: str | Path | None = None,
+    ssl_key: str | Path | None = None,
+) -> None:
+    """Run the server.
+
+    Args:
+        host: Host address to bind to
+        port: Port number to listen on
+        ssl_cert: Path to SSL certificate file (for WSS support)
+        ssl_key: Path to SSL private key file (for WSS support)
+    """
+    server = Server(host=host, port=port, ssl_cert=ssl_cert, ssl_key=ssl_key)
     await server.start()
 
     try:

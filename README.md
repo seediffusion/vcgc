@@ -14,7 +14,39 @@ uv sync
 uv run python main.py
 ```
 
-The server starts on port 8000 by default. You can specify a different port as the first argument.
+The server starts on port 8000 by default. Use `--help` to see all options:
+
+```bash
+uv run python main.py --help
+```
+
+Common options:
+- `--port PORT` - Port number (default: 8000)
+- `--host HOST` - Host address (default: 0.0.0.0)
+- `--ssl-cert PATH` - SSL certificate for WSS (secure WebSocket)
+- `--ssl-key PATH` - SSL private key for WSS
+
+### Running with SSL/WSS (Secure WebSocket)
+
+To run the server with SSL encryption (required for production deployments):
+
+**Using Let's Encrypt certificates:**
+```bash
+uv run python main.py --port 8000 \
+  --ssl-cert /etc/letsencrypt/live/yourdomain.com/fullchain.pem \
+  --ssl-key /etc/letsencrypt/live/yourdomain.com/privkey.pem
+```
+
+**Using self-signed certificates (for testing):**
+```bash
+# Generate self-signed certificate
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
+
+# Run server with self-signed certificate
+uv run python main.py --port 8443 --ssl-cert cert.pem --ssl-key key.pem
+```
+
+When SSL is enabled, the server will report `wss://` instead of `ws://` in its startup message. Clients connecting to a WSS server must use the `wss://` protocol in their connection URL.
 
 ### Running the Client
 
@@ -24,6 +56,8 @@ python client.py
 ```
 
 The client requires wxPython and a few other dependencies from v10. It connects to localhost:8000 by default.
+
+The client supports both `ws://` and `wss://` connections. When connecting to a server with SSL enabled, use the "Over Internet" option and enter the server address with the `wss://` prefix (e.g., `wss://example.com`). The client will handle SSL certificate validation automatically.
 
 ## Project Structure
 

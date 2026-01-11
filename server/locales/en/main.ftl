@@ -185,6 +185,7 @@ leaderboard-no-player-rating = You don't have a rating for this game yet.
 my-stats = My Stats
 my-stats-select-game = Select a game to view your stats
 my-stats-no-data = You haven't played this game yet.
+my-stats-no-games = You haven't played any games yet.
 my-stats-header = { $game } - Your Stats
 my-stats-wins = Wins: { $value }
 my-stats-losses = Losses: { $value }

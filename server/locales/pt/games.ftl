@@ -1,6 +1,9 @@
 # Mensagens compartilhadas de jogos para PlayPalace (Português)
 # Estas mensagens são comuns a vários jogos
 
+# Nomes de jogos
+game-name-ninetynine = Noventa e Nove
+
 # Fluxo de rodadas e turnos
 game-round-start = Rodada { $round }.
 game-round-end = Rodada { $round } concluída.
@@ -42,6 +45,11 @@ game-leave = Sair do jogo
 round-timer-paused = { $player } pausou o jogo (pressione p para iniciar a próxima rodada).
 round-timer-resumed = Temporizador retomado.
 round-timer-countdown = Próxima rodada em { $seconds }...
+
+# Jogos de dados - manter/soltar dados
+dice-keeping = Mantendo { $value }.
+dice-rerolling = Relançando { $value }.
+dice-locked = Esse dado está bloqueado e não pode ser alterado.
 
 # Distribuição (jogos de cartas)
 game-deal-counter = Distribuição { $current }/{ $total }.

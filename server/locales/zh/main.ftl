@@ -59,6 +59,18 @@ language-english = English
 language-option = 语言：{ $language }
 language-changed = 语言已设置为 { $language }。
 
+# 布尔选项状态
+option-on = 开启
+option-off = 关闭
+
+# 声音选项
+turn-sound-option = 回合提示音：{ $status }
+
+# 骰子选项
+clear-kept-option = 掷骰时清除保留的骰子：{ $status }
+dice-keeping-style-option = 骰子保留风格：{ $style }
+dice-keeping-style-changed = 骰子保留风格已设置为 { $style }。
+
 # 机器人名称
 cancel = 取消
 no-bot-names-available = 没有可用的机器人名称。
@@ -124,6 +136,7 @@ leaderboard-no-player-rating = 您还没有这个游戏的评分。
 my-stats = 我的统计
 my-stats-select-game = 选择游戏查看您的统计
 my-stats-no-data = 您还没有玩过这个游戏。
+my-stats-no-games = 您还没有玩过任何游戏。
 my-stats-header = { $game } - 您的统计
 my-stats-wins = 胜利：{ $value }
 my-stats-losses = 失败：{ $value }

@@ -14,7 +14,7 @@ class LoginDialog(wx.Dialog):
 
     def __init__(self, parent=None):
         """Initialize the login dialog."""
-        super().__init__(parent, title="Play Palace Login", size=(450, 250))
+        super().__init__(parent, title="Play Palace Login", size=(450, 320))
 
         self.dev_mode = True
         # Initialize config manager
@@ -39,8 +39,7 @@ class LoginDialog(wx.Dialog):
         # Server options
         self.server_options = {
             "Local Server": "ws://localhost:8000",
-            "Australia Server": "ws://rmichie.com:8000",
-            "Main Server (Singapore)": self.main_server_url,
+            "Over Internet": None,  # User will provide IP and port
         }
 
         # Load saved credentials from config manager
@@ -63,11 +62,11 @@ class LoginDialog(wx.Dialog):
 
     def _create_ui(self):
         """Create the UI components."""
-        panel = wx.Panel(self)
+        self.panel = wx.Panel(self)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Title
-        title = wx.StaticText(panel, label="PlayPalace 10.25.1203")
+        title = wx.StaticText(self.panel, label="PlayPalace 10.25.1203")
         title_font = title.GetFont()
         title_font.PointSize += 4
         title_font = title_font.Bold()
@@ -75,11 +74,11 @@ class LoginDialog(wx.Dialog):
         sizer.Add(title, 0, wx.ALL | wx.CENTER, 10)
 
         # Server selection
-        server_label = wx.StaticText(panel, label="&Server:")
+        server_label = wx.StaticText(self.panel, label="&Server:")
         sizer.Add(server_label, 0, wx.LEFT | wx.TOP, 10)
 
         self.server_combo = wx.ComboBox(
-            panel,
+            self.panel,
             choices=list(self.server_options.keys()),
             style=wx.CB_READONLY | wx.CB_DROPDOWN,
         )
@@ -100,50 +99,69 @@ class LoginDialog(wx.Dialog):
 
         sizer.Add(self.server_combo, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
+        # IP/Port fields for "Over Internet" option
+        self.ip_label = wx.StaticText(self.panel, label="&IP Address:")
+        sizer.Add(self.ip_label, 0, wx.LEFT | wx.TOP, 10)
+
+        self.ip_input = wx.TextCtrl(self.panel, value="")
+        sizer.Add(self.ip_input, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
+
+        self.port_label = wx.StaticText(self.panel, label="P&ort:")
+        sizer.Add(self.port_label, 0, wx.LEFT | wx.TOP, 10)
+
+        self.port_input = wx.TextCtrl(self.panel, value="8000")
+        sizer.Add(self.port_input, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
+
+        # Initially hide IP/Port fields (Local Server is default)
+        self._show_internet_fields(False)
+
+        # Bind server selection change event
+        self.server_combo.Bind(wx.EVT_COMBOBOX, self.on_server_change)
+
         # Username
-        username_label = wx.StaticText(panel, label="&Username:")
+        username_label = wx.StaticText(self.panel, label="&Username:")
         sizer.Add(username_label, 0, wx.LEFT | wx.TOP, 10)
 
-        self.username_input = wx.TextCtrl(panel, value=self.username)
+        self.username_input = wx.TextCtrl(self.panel, value=self.username)
         sizer.Add(self.username_input, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
         # Password
-        password_label = wx.StaticText(panel, label="&Password:")
+        password_label = wx.StaticText(self.panel, label="&Password:")
         sizer.Add(password_label, 0, wx.LEFT | wx.TOP, 10)
 
         self.password_input = wx.TextCtrl(
-            panel, style=wx.TE_PASSWORD, value=self.password
+            self.panel, style=wx.TE_PASSWORD, value=self.password
         )
         sizer.Add(self.password_input, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
         # Buttons
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.login_btn = wx.Button(panel, wx.ID_OK, "&Login")
+        self.login_btn = wx.Button(self.panel, wx.ID_OK, "&Login")
         self.login_btn.SetDefault()
         button_sizer.Add(self.login_btn, 0, wx.RIGHT, 5)
 
         if self.dev_mode and not self.is_frozen:
             self.dev_test_btn = wx.Button(
-                panel, wx.ID_OK, "Use &Developer Test Account"
+                self.panel, wx.ID_OK, "Use &Developer Test Account"
             )
             self.dev_test_btn.Bind(wx.EVT_BUTTON, self.on_test_acc)
             button_sizer.Add(self.dev_test_btn, 0, wx.RIGHT, 5)
 
-            self.reg_test_btn = wx.Button(panel, wx.ID_OK, "Use &Regular Test Account")
+            self.reg_test_btn = wx.Button(self.panel, wx.ID_OK, "Use &Regular Test Account")
             self.reg_test_btn.Bind(wx.EVT_BUTTON, self.on_test_acc)
             button_sizer.Add(self.reg_test_btn, 0, wx.RIGHT, 5)
 
-        self.create_account_btn = wx.Button(panel, label="Create &Account")
+        self.create_account_btn = wx.Button(self.panel, label="Create &Account")
         button_sizer.Add(self.create_account_btn, 0, wx.RIGHT, 5)
 
-        cancel_btn = wx.Button(panel, wx.ID_CANCEL, "&Cancel")
+        cancel_btn = wx.Button(self.panel, wx.ID_CANCEL, "&Cancel")
         button_sizer.Add(cancel_btn, 0)
 
         sizer.Add(button_sizer, 0, wx.ALL | wx.CENTER, 10)
 
         # Set sizer
-        panel.SetSizer(sizer)
+        self.panel.SetSizer(sizer)
 
         # Bind events
         self.login_btn.Bind(wx.EVT_BUTTON, self.on_login)
@@ -155,6 +173,61 @@ class LoginDialog(wx.Dialog):
             self.password_input.SetFocus()
         else:
             self.username_input.SetFocus()
+
+    def _show_internet_fields(self, show: bool):
+        """Show or hide the IP/Port input fields."""
+        self.ip_label.Show(show)
+        self.ip_input.Show(show)
+        self.port_label.Show(show)
+        self.port_input.Show(show)
+        self.panel.Layout()
+        self.Layout()
+
+    def on_server_change(self, event):
+        """Handle server selection change."""
+        server_choice = self.server_combo.GetStringSelection()
+        show_fields = server_choice == "Over Internet"
+        self._show_internet_fields(show_fields)
+
+    def _validate_and_build_server_url(self) -> str | None:
+        """Validate IP input and build the server URL.
+
+        Returns:
+            The server URL if valid, None if validation failed (error shown to user).
+        """
+        ip_address = self.ip_input.GetValue().strip()
+        port = self.port_input.GetValue().strip()
+
+        if not ip_address:
+            wx.MessageBox("Please enter an IP address", "Error", wx.OK | wx.ICON_ERROR)
+            self.ip_input.SetFocus()
+            return None
+
+        if not port:
+            wx.MessageBox("Please enter a port", "Error", wx.OK | wx.ICON_ERROR)
+            self.port_input.SetFocus()
+            return None
+
+        # Check if there's a URI scheme
+        if "://" in ip_address:
+            # Extract the scheme
+            scheme = ip_address.split("://")[0].lower()
+            if scheme not in ("ws", "wss"):
+                wx.MessageBox(
+                    f"Invalid URI scheme: '{scheme}://'\n\nOnly 'ws://' and 'wss://' are supported.",
+                    "Invalid Server Address",
+                    wx.OK | wx.ICON_ERROR,
+                )
+                self.ip_input.SetFocus()
+                return None
+            # Use the address as-is (preserving ws:// or wss://)
+            host_part = ip_address.split("://", 1)[1]
+            server_url = f"{scheme}://{host_part}:{port}"
+        else:
+            # No scheme, prepend ws://
+            server_url = f"ws://{ip_address}:{port}"
+
+        return server_url
 
     def _handle_server_selection(self, url: str) -> str:
         """Handle server selection, potentially prompting user if multiple servers share URL.
@@ -238,6 +311,12 @@ class LoginDialog(wx.Dialog):
         # Force main server if running as executable, otherwise use selected server
         if self.is_frozen:
             self.server_url = self.main_server_url
+        elif server_choice == "Over Internet":
+            # Validate and build URL from IP/Port inputs
+            server_url = self._validate_and_build_server_url()
+            if server_url is None:
+                return  # Validation failed, error already shown
+            self.server_url = server_url
         else:
             self.server_url = self.server_options[server_choice]
 
@@ -257,6 +336,14 @@ class LoginDialog(wx.Dialog):
             "Developer" if event.GetEventObject() == self.dev_test_btn else "User"
         )
         self.password = "d" if event.GetEventObject() == self.dev_test_btn else "u"
+
+        # Handle "Over Internet" option
+        server_choice = self.server_combo.GetStringSelection()
+        if server_choice == "Over Internet":
+            server_url = self._validate_and_build_server_url()
+            if server_url is None:
+                return  # Validation failed, error already shown
+            self.server_url = server_url
 
         # Handle server selection (may prompt if multiple servers with same URL)
         self.server_id = self._handle_server_selection(self.server_url)
@@ -278,7 +365,12 @@ class LoginDialog(wx.Dialog):
                 )
                 self.server_combo.SetFocus()
                 return
-            server_url = self.server_options[server_choice]
+            if server_choice == "Over Internet":
+                server_url = self._validate_and_build_server_url()
+                if server_url is None:
+                    return  # Validation failed, error already shown
+            else:
+                server_url = self.server_options[server_choice]
 
         dlg = RegistrationDialog(self, server_url)
         dlg.ShowModal()
