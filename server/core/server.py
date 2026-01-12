@@ -977,20 +977,27 @@ class Server:
         game.host = user.username
 
         # Attach users and transfer all human players
+        # NOTE: We must attach users by player.id (UUID), not by username.
+        # The deserialized game has player objects with their original IDs.
         for member in members_data:
             member_username = member.get("username")
             is_bot = member.get("is_bot", False)
 
+            # Find the player object by name to get their ID
+            player = game.get_player_by_name(member_username)
+            if not player:
+                continue
+
             if is_bot:
-                # Recreate bot
-                bot_user = Bot(member_username)
-                game.attach_user(member_username, bot_user)
+                # Recreate bot with the player's original ID
+                bot_user = Bot(member_username, uuid=player.id)
+                game.attach_user(player.id, bot_user)
             else:
-                # Attach human user
+                # Attach human user by player ID
                 member_user = self._users.get(member_username)
                 if member_user:
                     table.add_member(member_username, member_user, as_spectator=False)
-                    game.attach_user(member_username, member_user)
+                    game.attach_user(player.id, member_user)
                     self._user_states[member_username] = {
                         "menu": "in_game",
                         "table_id": table.table_id,
