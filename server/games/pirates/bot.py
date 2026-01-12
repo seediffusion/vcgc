@@ -17,14 +17,16 @@ if TYPE_CHECKING:
     from .skills import Skill
 
 from . import combat
+from . import skills
 from .skills import (
-    SwordFighterSkill,
-    PushSkill,
-    SkilledCaptainSkill,
-    PortalSkill,
-    GemSeekerSkill,
-    BattleshipSkill,
-    DoubleDevastationSkill,
+    SWORD_FIGHTER,
+    PUSH,
+    SKILLED_CAPTAIN,
+    PORTAL,
+    GEM_SEEKER,
+    BATTLESHIP,
+    DOUBLE_DEVASTATION,
+    SKILLS_BY_ID,
 )
 
 
@@ -71,10 +73,6 @@ def _analyze_and_decide(game: "PiratesGame", player: "PiratesPlayer") -> BotDeci
     4. If no gems nearby but player is near one, consider portal
     5. Default to moving toward nearest gem or random movement
     """
-    skill_manager = game.get_skill_manager(player)
-    if not skill_manager:
-        return _decide_movement(game, player)
-
     # Gather intel
     targets = combat.get_targets_in_range(game, player)
     closest_gem = _find_closest_gem(game, player)
@@ -83,17 +81,10 @@ def _analyze_and_decide(game: "PiratesGame", player: "PiratesPlayer") -> BotDeci
     # Check if any target has valuable gems worth attacking for
     valuable_target = _find_valuable_target(game, player, targets)
 
-    # Check our buff status
-    sword_skill = skill_manager.get_skill(SwordFighterSkill)
-    push_skill = skill_manager.get_skill(PushSkill)
-    captain_skill = skill_manager.get_skill(SkilledCaptainSkill)
-    portal_skill = skill_manager.get_skill(PortalSkill)
-    battleship_skill = skill_manager.get_skill(BattleshipSkill)
-    devastation_skill = skill_manager.get_skill(DoubleDevastationSkill)
-
+    # Check our buff status using skill singletons
     has_attack_buff = (
-        (sword_skill and sword_skill.is_active()) or
-        (captain_skill and captain_skill.is_active())
+        SWORD_FIGHTER.is_active(player) or
+        SKILLED_CAPTAIN.is_active(player)
     )
 
     # Decision logic
@@ -102,26 +93,21 @@ def _analyze_and_decide(game: "PiratesGame", player: "PiratesPlayer") -> BotDeci
     # Priority 1: If we want to attack a valuable target
     if valuable_target and targets:
         # Check if target has strong defense buffs
-        target_manager = game.get_skill_manager(valuable_target)
-        target_has_defense = False
-        if target_manager:
-            target_push = target_manager.get_skill(PushSkill)
-            target_captain = target_manager.get_skill(SkilledCaptainSkill)
-            target_has_defense = (
-                (target_push and target_push.is_active()) or
-                (target_captain and target_captain.is_active())
-            )
+        target_has_defense = (
+            PUSH.is_active(valuable_target) or
+            SKILLED_CAPTAIN.is_active(valuable_target)
+        )
 
         # If target has defense and we don't have attack buff, consider buffing first
         if target_has_defense and not has_attack_buff:
             # Try to activate sword fighter or skilled captain first
-            if sword_skill and sword_skill.is_unlocked(player):
-                can_use, _ = sword_skill.can_perform(game, player)
+            if SWORD_FIGHTER.is_unlocked(player):
+                can_use, _ = SWORD_FIGHTER.can_perform(game, player)
                 if can_use and random.random() < 0.8:  # 80% chance to buff first
                     return BotDecision(action_id="use_skill", skill_name="sword_fighter")
 
-            if captain_skill and captain_skill.is_unlocked(player):
-                can_use, _ = captain_skill.can_perform(game, player)
+            if SKILLED_CAPTAIN.is_unlocked(player):
+                can_use, _ = SKILLED_CAPTAIN.can_perform(game, player)
                 if can_use and random.random() < 0.8:
                     return BotDecision(action_id="use_skill", skill_name="skilled_captain")
 
@@ -133,8 +119,8 @@ def _analyze_and_decide(game: "PiratesGame", player: "PiratesPlayer") -> BotDeci
 
         if random.random() < attack_chance:
             # Use battleship if available and multiple targets or valuable target
-            if battleship_skill and battleship_skill.is_unlocked(player):
-                can_use, _ = battleship_skill.can_perform(game, player)
+            if BATTLESHIP.is_unlocked(player):
+                can_use, _ = BATTLESHIP.can_perform(game, player)
                 if can_use and (len(targets) >= 2 or valuable_target.score >= 3):
                     return BotDecision(
                         action_id="use_skill",
@@ -150,8 +136,8 @@ def _analyze_and_decide(game: "PiratesGame", player: "PiratesPlayer") -> BotDeci
         return _decide_movement_toward(game, player, closest_gem)
 
     # Priority 3: Consider portal if gems are far but another player is near one
-    if gem_distance > 10 and portal_skill and portal_skill.is_unlocked(player):
-        can_use, _ = portal_skill.can_perform(game, player)
+    if gem_distance > 10 and PORTAL.is_unlocked(player):
+        can_use, _ = PORTAL.can_perform(game, player)
         if can_use:
             # Check if another player is closer to a gem
             other_near_gem = _is_other_player_near_gem(game, player)
@@ -160,15 +146,14 @@ def _analyze_and_decide(game: "PiratesGame", player: "PiratesPlayer") -> BotDeci
 
     # Priority 4: Use gem seeker if we have uses and can't find gems
     if gem_distance > 15:
-        gem_seeker = skill_manager.get_skill(GemSeekerSkill)
-        if gem_seeker and gem_seeker.is_unlocked(player):
-            can_use, _ = gem_seeker.can_perform(game, player)
+        if GEM_SEEKER.is_unlocked(player):
+            can_use, _ = GEM_SEEKER.can_perform(game, player)
             if can_use and random.random() < 0.3:  # 30% chance
                 return BotDecision(action_id="use_skill", skill_name="gem_seeker")
 
     # Priority 5: Activate double devastation if targets are just out of range
-    if devastation_skill and devastation_skill.is_unlocked(player):
-        can_use, _ = devastation_skill.can_perform(game, player)
+    if DOUBLE_DEVASTATION.is_unlocked(player):
+        can_use, _ = DOUBLE_DEVASTATION.can_perform(game, player)
         if can_use:
             # Check if there are targets in extended range but not current range
             extended_targets = combat.get_targets_in_range(game, player, max_range=10)
@@ -401,11 +386,8 @@ def bot_select_boarding_action(
         return random.choice(["left", "right"])
 
     # Calculate steal success probability
-    attacker_manager = game.get_skill_manager(player)
-    defender_manager = game.get_skill_manager(defender)
-
-    attack_bonus = attacker_manager.get_attack_bonus() if attacker_manager else 0
-    defense_bonus = defender_manager.get_defense_bonus() if defender_manager else 0
+    attack_bonus = skills.get_attack_bonus(player)
+    defense_bonus = skills.get_defense_bonus(defender)
 
     # If we have advantage, higher chance to steal
     advantage = attack_bonus - defense_bonus
@@ -492,13 +474,11 @@ def bot_select_skill_choice(
     decision = getattr(game, "_bot_decision", None)
     if decision and decision.skill_name:
         # Find the matching skill label in options
-        skill_manager = game.get_skill_manager(player)
-        if skill_manager:
-            skill = skill_manager.get_skill_by_name(decision.skill_name)
-            if skill:
-                label = skill.get_menu_label()
-                if label in skill_options:
-                    return label
+        skill = SKILLS_BY_ID.get(decision.skill_name)
+        if skill:
+            label = skill.get_menu_label(player)
+            if label in skill_options:
+                return label
 
     # Fall back to "Back" if no valid skill found
     return "Back"

@@ -21,9 +21,9 @@ from ...messages.localization import Localization
 from ...ui.keybinds import KeybindState
 
 from .player import PiratesPlayer
-from .skills import SkillManager
 from . import gems
 from . import combat
+from . import skills
 from . import bot as bot_ai
 
 # Ocean names for random selection
@@ -106,9 +106,6 @@ class PiratesGame(Game):
     total_gems: int = 18
     golden_moon_active: bool = False
 
-    # Skill managers (not serialized - rebuilt on load)
-    _skill_managers: dict[str, SkillManager] = field(default_factory=dict)
-
     @classmethod
     def get_name(cls) -> str:
         return "Pirates of the Lost Seas"
@@ -132,28 +129,18 @@ class PiratesGame(Game):
     def __post_init__(self):
         """Initialize non-serialized state."""
         super().__post_init__()
-        self._skill_managers = {}
 
     def rebuild_runtime_state(self) -> None:
-        """Rebuild skill managers after deserialization."""
+        """Rebuild runtime state after deserialization."""
         super().rebuild_runtime_state()
-        # Rebuild skill managers for all players
-        for player in self.players:
-            if player.id not in self._skill_managers:
-                self._skill_managers[player.id] = SkillManager(user_id=player.id)
+        # Skills are now on each player, no need to rebuild here
 
     def create_player(
         self, player_id: str, name: str, is_bot: bool = False
     ) -> PiratesPlayer:
         """Create a new Pirates player."""
-        player = PiratesPlayer(id=player_id, name=name, is_bot=is_bot)
-        # Create skill manager for this player
-        self._skill_managers[player_id] = SkillManager(user_id=player_id)
-        return player
-
-    def get_skill_manager(self, player: PiratesPlayer) -> SkillManager | None:
-        """Get the skill manager for a player."""
-        return self._skill_managers.get(player.id)
+        # Skills are initialized in PiratesPlayer.__post_init__
+        return PiratesPlayer(id=player_id, name=name, is_bot=is_bot)
 
     # ==========================================================================
     # Action Sets
@@ -392,13 +379,9 @@ class PiratesGame(Game):
         if not isinstance(player, PiratesPlayer):
             return ["Back"]
 
-        skill_manager = self.get_skill_manager(player)
-        if not skill_manager:
-            return ["Back"]
-
         options = []
-        for name, skill in skill_manager.get_available_skills(self, player):
-            options.append(skill.get_menu_label())
+        for skill in skills.get_available_skills(player):
+            options.append(skill.get_menu_label(player))
 
         options.append("Back")
         return options
@@ -499,9 +482,7 @@ class PiratesGame(Game):
             return
 
         # Update skill timers
-        skill_manager = self.get_skill_manager(player)
-        if skill_manager:
-            skill_manager.on_turn_start(self, player)
+        skills.on_turn_start(self, player)
 
         # Play turn sound
         if not player.is_bot:
@@ -794,13 +775,9 @@ class PiratesGame(Game):
         if skill_choice == "Back":
             return
 
-        skill_manager = self.get_skill_manager(player)
-        if not skill_manager:
-            return
-
         # Find the skill by matching the label
-        for name, skill in skill_manager.get_available_skills(self, player):
-            if skill.get_menu_label() == skill_choice:
+        for skill in skills.get_available_skills(player):
+            if skill.get_menu_label(player) == skill_choice:
                 can_use, reason = skill.can_perform(self, player)
                 if can_use:
                     result = skill.do_action(self, player)
@@ -866,8 +843,7 @@ class PiratesGame(Game):
         targets = self.get_targets_in_range(player)
 
         if not targets:
-            skill_manager = self.get_skill_manager(player)
-            max_range = skill_manager.get_attack_range() if skill_manager else 5
+            max_range = skills.get_attack_range(player)
             user = self.get_user(player)
             if user:
                 user.speak_l("pirates-no-targets", range=max_range)
@@ -927,7 +903,7 @@ class PiratesGame(Game):
         new_pos = random.randint(ocean_start, ocean_end)
 
         player.position = new_pos
-        skill.start_cooldown()
+        skill.start_cooldown(player)
 
         sound_num = random.randint(1, 2)
         self.play_sound(f"game_pirates/portal{sound_num}.ogg", volume=60)

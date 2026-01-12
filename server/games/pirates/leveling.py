@@ -16,7 +16,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 
 if TYPE_CHECKING:
     from .game import PiratesGame
-    from .skills import SkillManager, Skill
+    from .skills import Skill
 
 
 def get_xp_for_level(level: int) -> int:
@@ -30,7 +30,7 @@ class LevelingSystem(DataClassJSONMixin):
     Manages a player's experience and level progression.
 
     Tied to a specific player via user_id.
-    Skill unlock levels are read from the SkillManager - not stored here.
+    Skill unlock levels are read from the skill singletons in skills.py.
 
     The game object is NEVER stored - it is only passed as a parameter to methods.
     This ensures the leveling system remains serializable.
@@ -56,38 +56,25 @@ class LevelingSystem(DataClassJSONMixin):
         """Check if the player has enough XP to level up."""
         return self.xp >= get_xp_for_level(self.level + 1)
 
-    def get_unlocked_skills(self, skill_manager: "SkillManager") -> list["Skill"]:
-        """
-        Get list of skills unlocked at or below current level.
-
-        Args:
-            skill_manager: The player's skill manager to read skill levels from
-        """
+    def get_unlocked_skills(self) -> list["Skill"]:
+        """Get list of skills unlocked at or below current level."""
+        from .skills import ALL_SKILLS
         return [
-            skill for skill in skill_manager.skills.values()
+            skill for skill in ALL_SKILLS
             if skill.required_level <= self.level
         ]
 
-    def get_locked_skills(self, skill_manager: "SkillManager") -> list["Skill"]:
-        """
-        Get list of skills not yet unlocked.
-
-        Args:
-            skill_manager: The player's skill manager to read skill levels from
-        """
+    def get_locked_skills(self) -> list["Skill"]:
+        """Get list of skills not yet unlocked."""
+        from .skills import ALL_SKILLS
         return [
-            skill for skill in skill_manager.skills.values()
+            skill for skill in ALL_SKILLS
             if skill.required_level > self.level
         ]
 
-    def get_next_skill_unlock(self, skill_manager: "SkillManager") -> tuple[int, "Skill"] | None:
-        """
-        Get the next skill unlock (level, skill) or None if all unlocked.
-
-        Args:
-            skill_manager: The player's skill manager to read skill levels from
-        """
-        locked = self.get_locked_skills(skill_manager)
+    def get_next_skill_unlock(self) -> tuple[int, "Skill"] | None:
+        """Get the next skill unlock (level, skill) or None if all unlocked."""
+        locked = self.get_locked_skills()
         if not locked:
             return None
 
@@ -95,16 +82,11 @@ class LevelingSystem(DataClassJSONMixin):
         next_skill = min(locked, key=lambda s: s.required_level)
         return next_skill.required_level, next_skill
 
-    def get_skills_at_level(self, skill_manager: "SkillManager", level: int) -> list["Skill"]:
-        """
-        Get skills that unlock exactly at the given level.
-
-        Args:
-            skill_manager: The player's skill manager to read skill levels from
-            level: The level to check
-        """
+    def get_skills_at_level(self, level: int) -> list["Skill"]:
+        """Get skills that unlock exactly at the given level."""
+        from .skills import ALL_SKILLS
         return [
-            skill for skill in skill_manager.skills.values()
+            skill for skill in ALL_SKILLS
             if skill.required_level == level
         ]
 
@@ -141,10 +123,6 @@ class LevelingSystem(DataClassJSONMixin):
         if not player:
             return []
 
-        skill_manager = game.get_skill_manager(player)
-        if not skill_manager:
-            return []
-
         # Process level ups
         starting_level = self.level
         skills_unlocked: list["Skill"] = []
@@ -153,7 +131,7 @@ class LevelingSystem(DataClassJSONMixin):
             self.level += 1
 
             # Check for skill unlocks at this level
-            newly_unlocked = self.get_skills_at_level(skill_manager, self.level)
+            newly_unlocked = self.get_skills_at_level(self.level)
             skills_unlocked.extend(newly_unlocked)
 
         # Announce level ups if any

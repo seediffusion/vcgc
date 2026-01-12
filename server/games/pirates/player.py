@@ -1,11 +1,10 @@
 """
 Player dataclass for Pirates of the Lost Seas.
 
-Contains player state including position, score, gems, and references to
-the leveling system and skill manager.
+Contains player state including position, score, gems, leveling system, and skill state.
 
 Inherits from Player which has DataClassJSONMixin, so this class is serializable.
-All fields are either primitive types or serializable dataclasses (LevelingSystem).
+All fields are primitive types or simple serializable dataclasses.
 """
 
 from __future__ import annotations
@@ -16,7 +15,7 @@ from ..base import Player
 from .leveling import LevelingSystem
 
 if TYPE_CHECKING:
-    from .skills import SkillManager
+    pass
 
 
 @dataclass
@@ -24,8 +23,10 @@ class PiratesPlayer(Player):
     """
     Player state for Pirates of the Lost Seas.
 
-    Skills are managed via the game's skill_manager dict, not stored on the player.
-    Leveling is managed via the _leveling field which is serialized.
+    Skill state is stored in simple dicts that serialize easily:
+    - skill_cooldowns: remaining cooldown turns per skill
+    - skill_active: remaining active turns for buffs
+    - skill_uses: remaining uses for limited-use skills
 
     The game object is NEVER stored on this class - it is only passed as a
     parameter to methods. This ensures the player remains serializable.
@@ -38,8 +39,10 @@ class PiratesPlayer(Player):
     # Leveling system (serialized - has DataClassJSONMixin)
     _leveling: LevelingSystem = field(default=None)  # type: ignore
 
-    # Skill manager is stored on the game object, not on the player
-    # This avoids circular references and keeps the player serializable
+    # Skill state - simple dicts that serialize easily
+    skill_cooldowns: dict[str, int] = field(default_factory=dict)
+    skill_active: dict[str, int] = field(default_factory=dict)
+    skill_uses: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self):
         """Initialize the leveling system if not set."""

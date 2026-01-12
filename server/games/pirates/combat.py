@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .player import PiratesPlayer
 
 from . import gems
+from . import skills
 
 
 @dataclass
@@ -50,11 +51,7 @@ def get_targets_in_range(
         List of players within attack range
     """
     if max_range is None:
-        skill_manager = game.get_skill_manager(attacker)
-        if skill_manager:
-            max_range = skill_manager.get_attack_range()
-        else:
-            max_range = 5
+        max_range = skills.get_attack_range(attacker)
 
     targets = []
     for player in game.get_active_players():
@@ -113,12 +110,9 @@ def do_attack(
         exclude=attacker
     )
 
-    # Get bonuses from skill managers
-    attacker_skill_manager = game.get_skill_manager(attacker)
-    defender_skill_manager = game.get_skill_manager(defender)
-
-    attack_bonus = attacker_skill_manager.get_attack_bonus() if attacker_skill_manager else 0
-    defense_bonus = defender_skill_manager.get_defense_bonus() if defender_skill_manager else 0
+    # Get bonuses from skills
+    attack_bonus = skills.get_attack_bonus(attacker)
+    defense_bonus = skills.get_defense_bonus(defender)
 
     # Roll attack
     attack_roll = random.randint(1, 6)
