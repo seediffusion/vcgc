@@ -138,27 +138,42 @@ class LevelingSystem(DataClassJSONMixin):
         if self.level > starting_level:
             game.play_sound("game_pig/win.ogg", volume=80)
             levels_gained = self.level - starting_level
+            user = game.get_user(player)
 
             if levels_gained == 1:
+                if user:
+                    user.speak_l("pirates-level-up-you", level=self.level)
                 game.broadcast_l(
                     "pirates-level-up",
                     player=player_name,
-                    level=self.level
+                    level=self.level,
+                    exclude=player
                 )
             else:
+                if user:
+                    user.speak_l(
+                        "pirates-level-up-multiple-you",
+                        levels=levels_gained,
+                        level=self.level
+                    )
                 game.broadcast_l(
                     "pirates-level-up-multiple",
                     player=player_name,
                     levels=levels_gained,
-                    level=self.level
+                    level=self.level,
+                    exclude=player
                 )
 
-            # Announce unlocked skills
-            for skill in skills_unlocked:
+            # Announce unlocked skills in a single message
+            if skills_unlocked:
+                skill_names = ", ".join(skill.name for skill in skills_unlocked)
+                if user:
+                    user.speak_l("pirates-skills-unlocked-you", skills=skill_names)
                 game.broadcast_l(
-                    "pirates-skill-unlocked",
+                    "pirates-skills-unlocked",
                     player=player_name,
-                    skill=skill.name
+                    skills=skill_names,
+                    exclude=player
                 )
 
         return skills_unlocked

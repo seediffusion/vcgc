@@ -241,11 +241,11 @@ class PiratesGame(Game):
         # Status actions
         action_set.add(
             Action(
-                id="check_status",
-                label=Localization.get(locale, "pirates-check-status"),
-                handler="_action_check_status",
-                is_enabled="_is_status_enabled",
-                is_hidden="_is_status_hidden",
+                id="check_moon",
+                label=Localization.get(locale, "pirates-check-moon"),
+                handler="_action_check_moon",
+                is_enabled="_is_moon_check_enabled",
+                is_hidden="_is_moon_check_hidden",
             )
         )
         action_set.add(
@@ -259,11 +259,11 @@ class PiratesGame(Game):
         )
         action_set.add(
             Action(
-                id="check_moon",
-                label=Localization.get(locale, "pirates-check-moon"),
-                handler="_action_check_moon",
-                is_enabled="_is_moon_check_enabled",
-                is_hidden="_is_moon_check_hidden",
+                id="check_status",
+                label=Localization.get(locale, "pirates-check-status"),
+                handler="_action_check_status",
+                is_enabled="_is_status_enabled",
+                is_hidden="_is_status_hidden",
             )
         )
 

@@ -11,7 +11,7 @@ pirates-gems-placed = { $total } gems have been scattered across the seas. Find 
 pirates-golden-moon = The Golden Moon rises! All XP gains are tripled this round!
 
 # Turn announcements
-pirates-turn = { $player }'s turn. Position: { $position }
+pirates-turn = { $player }'s turn. Position { $position }
 
 # Movement actions
 pirates-move-left = Sail left
@@ -32,8 +32,8 @@ pirates-check-status = Check status
 pirates-check-position = Check position
 pirates-check-moon = Check moon brightness
 pirates-your-position = Your position: { $position } in { $ocean }
-pirates-moon-brightness = Golden Moon brightness: { $brightness }% ({ $collected }/{ $total } gems collected)
-pirates-no-golden-moon = The Golden Moon is not currently active.
+pirates-moon-brightness = The Golden Moon is { $brightness }% bright. ({ $collected } of { $total } gems have been collected).
+pirates-no-golden-moon = The Golden Moon can not be seen up in the sky right now.
 
 # Gem collection
 pirates-gem-found-you = You found a { $gem }! Worth { $value } points.
@@ -87,12 +87,15 @@ pirates-steal-failed = The steal attempt failed!
 # XP and Leveling
 pirates-xp-gained = +{ $xp } XP
 pirates-level-up = { $player } reached level { $level }!
+pirates-level-up-you = You reached level { $level }!
 pirates-level-up-multiple = { $player } gained { $levels } levels! Now level { $level }!
-pirates-skill-unlocked = { $player } unlocked: { $skill }!
+pirates-level-up-multiple-you = You gained { $levels } levels! Now level { $level }!
+pirates-skills-unlocked = { $player } unlocked new skills: { $skills }.
+pirates-skills-unlocked-you = You unlocked new skills: { $skills }.
 
 # Skill activation
 pirates-skill-activated = { $player } activates { $skill }!
-pirates-buff-expired = { $player }'s { $skill } has worn off.
+pirates-buff-expired = { $player }'s { $skill } buff has worn off.
 
 # Sword Fighter skill
 pirates-sword-fighter-activated = Sword Fighter activated! +4 attack bonus for { $turns } turns.
