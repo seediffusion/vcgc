@@ -126,6 +126,56 @@ class IntOption(OptionMeta):
 
 
 @dataclass
+class FloatOption(OptionMeta):
+    """Float option with min/max validation and decimal rounding."""
+
+    min_val: float = 0.0
+    max_val: float = 100.0
+    decimal_places: int = 1  # Round to this many decimal places
+    value_key: str = (
+        "value"  # Key used in localization (e.g., "value", "amount", "rate")
+    )
+
+    def get_label_kwargs(self, value: Any) -> dict[str, Any]:
+        return {self.value_key: value}
+
+    def get_change_kwargs(self, value: Any) -> dict[str, Any]:
+        return {self.value_key: value}
+
+    def create_action(
+        self,
+        option_name: str,
+        game: "Game",
+        player: "Player",
+        current_value: Any,
+        locale: str,
+    ) -> Action:
+        label = Localization.get(
+            locale, self.label, **self.get_label_kwargs(current_value)
+        )
+        return Action(
+            id=f"set_{option_name}",
+            label=label,
+            handler="_action_set_option",  # Generic handler extracts option_name from action_id
+            is_enabled="_is_option_enabled",
+            is_hidden="_is_option_hidden",
+            input_request=EditboxInput(
+                prompt=self.prompt,
+                default=str(current_value),
+            ),
+        )
+
+    def validate_and_convert(self, value: str) -> tuple[bool, Any]:
+        try:
+            float_val = float(value)
+            float_val = max(self.min_val, min(self.max_val, float_val))
+            float_val = round(float_val, self.decimal_places)
+            return True, float_val
+        except ValueError:
+            return False, value
+
+
+@dataclass
 class MenuOption(OptionMeta):
     """Menu selection option."""
 
