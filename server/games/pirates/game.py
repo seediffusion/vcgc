@@ -16,7 +16,7 @@ from ..registry import register_game
 from ...game_utils.actions import Action, ActionSet, Visibility, MenuInput
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
-from ...game_utils.options import GameOptions, MenuOption, option_field
+from ...game_utils.options import GameOptions, FloatOption, MenuOption, option_field
 from ...messages.localization import Localization
 from ...ui.keybinds import KeybindState
 
@@ -45,22 +45,29 @@ OCEAN_NAMES = [
 class PiratesOptions(GameOptions):
     """Game options for Pirates of the Lost Seas."""
 
-    xp_multiplier: str = option_field(
-        MenuOption(
-            default="normal",
-            value_key="multiplier",
-            choices=["quarter", "half", "normal", "one_and_half", "double", "triple"],
-            choice_labels={
-                "quarter": "pirates-xp-quarter",
-                "half": "pirates-xp-half",
-                "normal": "pirates-xp-normal",
-                "one_and_half": "pirates-xp-one-and-half",
-                "double": "pirates-xp-double",
-                "triple": "pirates-xp-triple",
-            },
-            label="pirates-set-xp-multiplier",
-            prompt="pirates-select-xp-multiplier",
-            change_msg="pirates-option-changed-xp",
+    combat_xp_multiplier: float = option_field(
+        FloatOption(
+            default=1.0,
+            min_val=0.1,
+            max_val=3.0,
+            decimal_places=2,
+            value_key="combat_multiplier",
+            label="pirates-set-combat-xp-multiplier",
+            prompt="pirates-enter-combat-xp-multiplier",
+            change_msg="pirates-option-changed-combat-xp",
+        )
+    )
+
+    find_gem_xp_multiplier: float = option_field(
+        FloatOption(
+            default=1.0,
+            min_val=0.1,
+            max_val=3.0,
+            decimal_places=2,
+            value_key="find_gem_multiplier",
+            label="pirates-set-find-gem-xp-multiplier",
+            prompt="pirates-enter-find-gem-xp-multiplier",
+            change_msg="pirates-option-changed-find-gem-xp",
         )
     )
 
@@ -578,7 +585,7 @@ class PiratesGame(Game):
         xp_gain = random.randint(150, 300)
         moon_mult = 3.0 if self.golden_moon_active else 1.0
         player.leveling.give_xp(
-            self, player.name, xp_gain, moon_mult, self._get_xp_multiplier()
+            self, player.name, xp_gain, moon_mult, self.options.find_gem_xp_multiplier
         )
 
         # Mark gem as collected
@@ -867,7 +874,7 @@ class PiratesGame(Game):
             combat.do_attack(
                 self, player, target,
                 self.golden_moon_active,
-                self._get_xp_multiplier(),
+                self.options.combat_xp_multiplier,
                 self.options.gem_stealing
             )
             return "end_turn"
@@ -949,7 +956,7 @@ class PiratesGame(Game):
                 combat.do_attack(
                     self, player, target,
                     self.golden_moon_active,
-                    self._get_xp_multiplier(),
+                    self.options.combat_xp_multiplier,
                     self.options.gem_stealing
                 )
 
@@ -959,15 +966,3 @@ class PiratesGame(Game):
         """Request boarding action choice from player (simplified for bot/default)."""
         can_steal = self.options.gem_stealing != "disabled" and defender.has_gems()
         return bot_ai.bot_select_boarding_action(self, attacker, defender, can_steal)
-
-    def _get_xp_multiplier(self) -> float:
-        """Get the XP multiplier from game options."""
-        multipliers = {
-            "quarter": 0.25,
-            "half": 0.5,
-            "normal": 1.0,
-            "one_and_half": 1.5,
-            "double": 2.0,
-            "triple": 3.0,
-        }
-        return multipliers.get(self.options.xp_multiplier, 1.0)

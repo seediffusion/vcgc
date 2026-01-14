@@ -127,17 +127,10 @@ pirates-requires-level-15 = Requires level 15
 pirates-requires-level-150 = Requires level 150
 
 # XP Multiplier options
-pirates-set-xp-multiplier = XP multiplier: { $multiplier }
-pirates-select-xp-multiplier = Select XP multiplier
-pirates-option-changed-xp = XP multiplier set to { $multiplier }.
-
-# XP multiplier choices
-pirates-xp-quarter = 0.25x (Quarter)
-pirates-xp-half = 0.5x (Half)
-pirates-xp-normal = 1x (Normal)
-pirates-xp-one-and-half = 1.5x
-pirates-xp-double = 2x (Double)
-pirates-xp-triple = 3x (Triple)
+pirates-set-combat-xp-multiplier = combat xp multiplier: { $combat_multiplier }
+pirates-enter-combat-xp-multiplier = experience for combat
+pirates-set-find-gem-xp-multiplier = find gem xp multiplier: { $find_gem_multiplier }
+pirates-enter-find-gem-xp-multiplier = experience for finding a gem
 
 # Gem stealing options
 pirates-set-gem-stealing = Gem stealing: { $mode }
