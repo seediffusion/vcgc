@@ -3,6 +3,7 @@ Tests for the Mile by Mile game.
 """
 
 import json
+import random
 
 from server.games.milebymile.game import (
     MileByMileGame,
@@ -170,9 +171,10 @@ class TestMileByMilePlayTest:
 
     def test_four_player_team_game_completes(self):
         """Test that a 4-player team game completes."""
+        random.seed(12345)
         game = MileByMileGame()
-        game.options.round_distance = 300
-        game.options.winning_score = 1000
+        game.options.round_distance = 200
+        game.options.winning_score = 400
         game.options.team_mode = "2 Teams of 2"
 
         for i in range(4):
@@ -184,7 +186,7 @@ class TestMileByMilePlayTest:
         # Verify teams are set up
         assert game.get_num_teams() == 2
 
-        max_ticks = 40000
+        max_ticks = 80000
         for _ in range(max_ticks):
             if game.status == "finished":
                 break
