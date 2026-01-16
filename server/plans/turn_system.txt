@@ -1,4 +1,4 @@
-I would like to add a game utility in game_utils called turn_helper.py.
+I would like to add a game utility in game_utils called turn_system.py.
 The purpose of this module will be to integrate it with base game to provide extra functions for turn tracking and add more callbacks based on turn info.
 
 objectives:
@@ -16,6 +16,7 @@ players (id): set (not always used)
 GameRound dataclass:
 round_number: int
 cycle_count: int
+max_turn_cycles: int= 0 # Forces the round to end after this many cycles.
 turns: list
 turn_timer
 final_scores: dict # Key is player id, value is player score
