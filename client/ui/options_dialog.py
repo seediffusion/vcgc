@@ -2,6 +2,7 @@
 
 import wx
 from . import uisound
+import dark_mode
 
 
 class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
@@ -63,6 +64,15 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
 
         self._create_ui()
         self.CenterOnScreen()
+
+        # Dark Mode Setup
+        self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.on_sys_colour_changed)
+        dark_mode.sync_window(self)
+
+    def on_sys_colour_changed(self, event):
+        """Handle system theme change."""
+        dark_mode.sync_window(self)
+        event.Skip()
 
     def get_language_code(self, name: str = "") -> str:
         """Get a language code from its name."""

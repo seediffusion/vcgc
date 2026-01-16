@@ -3,6 +3,7 @@
 import wx
 import sys
 from pathlib import Path
+import dark_mode
 
 # Add parent directory to path to import config_manager
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -30,6 +31,15 @@ class LoginDialog(wx.Dialog):
 
         self._create_ui()
         self.CenterOnScreen()
+
+        # Dark Mode Setup
+        self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.on_sys_colour_changed)
+        dark_mode.sync_window(self)
+
+    def on_sys_colour_changed(self, event):
+        """Handle system theme change."""
+        dark_mode.sync_window(self)
+        event.Skip()
 
     def _create_ui(self):
         """Create the UI components."""

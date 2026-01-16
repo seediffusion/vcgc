@@ -3,6 +3,7 @@
 import wx
 import sys
 from pathlib import Path
+import dark_mode
 
 # Add parent directory to path to import config_manager
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -44,6 +45,15 @@ class AccountEditorDialog(wx.Dialog):
 
         # Bind escape key to close
         self.Bind(wx.EVT_CHAR_HOOK, self.on_key)
+
+        # Dark Mode Setup
+        self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.on_sys_colour_changed)
+        dark_mode.sync_window(self)
+
+    def on_sys_colour_changed(self, event):
+        """Handle system theme change."""
+        dark_mode.sync_window(self)
+        event.Skip()
 
     def _create_ui(self):
         """Create the UI components."""
@@ -185,6 +195,15 @@ class ServerEditorDialog(wx.Dialog):
 
         # Bind escape key to close
         self.Bind(wx.EVT_CHAR_HOOK, self.on_key)
+
+        # Dark Mode Setup
+        self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.on_sys_colour_changed)
+        dark_mode.sync_window(self)
+
+    def on_sys_colour_changed(self, event):
+        """Handle system theme change."""
+        dark_mode.sync_window(self)
+        event.Skip()
 
     def _create_ui(self):
         """Create the UI components."""
@@ -455,6 +474,15 @@ class ServerManagerDialog(wx.Dialog):
 
         # Bind escape key to close
         self.Bind(wx.EVT_CHAR_HOOK, self.on_key)
+
+        # Dark Mode Setup
+        self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.on_sys_colour_changed)
+        dark_mode.sync_window(self)
+
+    def on_sys_colour_changed(self, event):
+        """Handle system theme change."""
+        dark_mode.sync_window(self)
+        event.Skip()
 
     def _create_ui(self):
         """Create the UI components."""

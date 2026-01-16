@@ -6,6 +6,7 @@ import asyncio
 import threading
 import websockets
 import ssl
+import dark_mode
 
 
 class RegistrationDialog(wx.Dialog):
@@ -18,6 +19,15 @@ class RegistrationDialog(wx.Dialog):
         self.server_url = server_url
         self._create_ui()
         self.CenterOnScreen()
+
+        # Dark Mode Setup
+        self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.on_sys_colour_changed)
+        dark_mode.sync_window(self)
+
+    def on_sys_colour_changed(self, event):
+        """Handle system theme change."""
+        dark_mode.sync_window(self)
+        event.Skip()
 
     def _create_ui(self):
         """Create the UI components."""

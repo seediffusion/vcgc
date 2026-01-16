@@ -7,6 +7,7 @@ import sys
 import os
 import json
 from pathlib import Path
+import dark_mode  # Import the new dark mode utility
 
 # Add parent directory to path to import sound_manager and network_manager
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,7 +31,7 @@ class MainWindow(wx.Frame):
         super().__init__(
             parent=None,
             title="PlayPalace 11",
-            size=(1, 1),  # Minimal size for audio-only interface
+            size=(800, 600),  # Changed from (1, 1) to visible size
         )
 
         # Store credentials
@@ -52,37 +53,33 @@ class MainWindow(wx.Frame):
         # Initialize network manager
         self.network = NetworkManager(self)
         self.connected = False
-        self.expecting_reconnect = False  # Track if we're expecting to reconnect
-        self.reconnect_attempts = 0  # Track reconnection attempts
-        self.max_reconnect_attempts = 30  # Maximum reconnection attempts
-        self.last_server_message = None  # Track last speak message for error display
+        self.expecting_reconnect = False
+        self.reconnect_attempts = 0
+        self.max_reconnect_attempts = 30
+        self.last_server_message = None
 
         # Store user's options
-        # Client-side options (from config file, per-server)
         self.client_options = {}
-        # Server-side options (received from server on login)
         self.server_options = {}
 
         # Load client-side options for this server
         if self.config_manager and self.server_id:
             self.client_options = self.config_manager.get_client_options(self.server_id)
-            # Apply initial volumes from client options
             self._apply_client_audio_options()
 
-        # Track which test music is playing
         self.current_test_music = "mainmus.ogg"
 
         # Track current mode (list or edit)
-        self.current_mode = "list"  # "list" or "edit"
-        self.edit_mode_callback = None  # Callback for when edit mode submits
-        self.current_menu_id = None  # Track which menu is currently displayed
-        self.current_menu_state = None  # Track previous menu state for comparison
-        self.current_menu_item_ids = []  # Track item IDs for current menu (parallel to menu items)
-        self.current_edit_multiline = False  # Track if current editbox is multiline
-        self.current_edit_read_only = False  # Track if current editbox is read-only
+        self.current_mode = "list"
+        self.edit_mode_callback = None
+        self.current_menu_id = None
+        self.current_menu_state = None
+        self.current_menu_item_ids = []
+        self.current_edit_multiline = False
+        self.current_edit_read_only = False
 
         # Ping tracking
-        self._ping_start_time = None  # Track when ping was sent
+        self._ping_start_time = None
 
         # Initialize buffer system
         self.buffer_system = BufferSystem()
@@ -103,8 +100,17 @@ class MainWindow(wx.Frame):
         self._setup_accelerators()
         self._populate_test_data()
 
+        # Dark Mode Setup
+        self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.on_sys_colour_changed)
+        dark_mode.sync_window(self)
+
         # Auto-connect to localhost
         self._auto_connect()
+
+    def on_sys_colour_changed(self, event):
+        """Handle system theme change."""
+        dark_mode.sync_window(self)
+        event.Skip()
 
     def _apply_client_audio_options(self):
         """Apply audio settings from client-side options."""
@@ -117,56 +123,78 @@ class MainWindow(wx.Frame):
             self.sound_manager.set_ambience_volume(ambience_volume)
 
     def _create_ui(self):
-        """Create the UI components (audio-only, no visual layout)."""
-        # Main panel - no sizing needed
+        """Create the UI components with proper visible layout."""
         panel = wx.Panel(self)
+        
+        # Main Sizer
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Menu label and list - labels help screen readers
+        # Top Section: Menu
         self.menu_label = wx.StaticText(panel, label="&Menu")
+        main_sizer.Add(self.menu_label, 0, wx.ALL, 5)
+
         self.menu_list = MenuList(
             panel,
             sound_manager=self.sound_manager,
-            size=(0, 0),
+            size=wx.DefaultSize, # Use default visible size
             style=wx.LB_SINGLE | wx.WANTS_CHARS,
         )
-        # Bind to activation events to handle menu selections
+        # Give menu list proportion 1 to expand
+        main_sizer.Add(self.menu_list, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 5)
+
         self.menu_list.Bind(wx.EVT_LISTBOX_DCLICK, self.on_menu_activate)
-        # Bind focus events to enable/disable buffer navigation
         self.menu_list.Bind(wx.EVT_SET_FOCUS, self.on_menu_focus)
         self.menu_list.Bind(wx.EVT_KILL_FOCUS, self.on_menu_unfocus)
 
-        # Edit mode input - initially hidden, replaces menu list when in edit mode
+        # Edit Mode Controls (Hidden by default, swapped in code)
         self.edit_label = wx.StaticText(panel, label="&Edit")
-        self.edit_input = wx.TextCtrl(panel, size=(0, 0), style=wx.TE_PROCESS_ENTER)
+        main_sizer.Add(self.edit_label, 0, wx.ALL, 5)
+        
+        self.edit_input = wx.TextCtrl(panel, size=wx.DefaultSize, style=wx.TE_PROCESS_ENTER)
         self.edit_input.Bind(wx.EVT_TEXT_ENTER, self.on_edit_enter)
         self.edit_input.Bind(wx.EVT_CHAR, self.on_edit_char)
-        self.edit_input.Hide()
-        self.edit_label.Hide()
-
-        # Multiline edit input - for longer text
+        main_sizer.Add(self.edit_input, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 5)
+        
         self.edit_input_multiline = wx.TextCtrl(
-            panel, size=(0, 0), style=wx.TE_MULTILINE | wx.TE_DONTWRAP
+            panel, size=wx.DefaultSize, style=wx.TE_MULTILINE | wx.TE_DONTWRAP
         )
         self.edit_input_multiline.Bind(wx.EVT_CHAR, self.on_edit_multiline_char)
+        main_sizer.Add(self.edit_input_multiline, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 5)
+
+        # Initially hide edit controls
+        self.edit_input.Hide()
         self.edit_input_multiline.Hide()
+        self.edit_label.Hide()
 
-        # Multiletter navigation is now server-controlled
-        self.multiletter_enabled = True  # Track state from server
-        self.escape_behavior = "keybind"  # Track escape behavior from server
+        self.multiletter_enabled = True
+        self.escape_behavior = "keybind"
 
-        # Chat input comes before history in tab order
-        wx.StaticText(panel, label="&Chat")
-        self.chat_input = wx.TextCtrl(panel, size=(0, 0), style=wx.TE_PROCESS_ENTER)
-        self.chat_input.Bind(wx.EVT_TEXT_ENTER, self.on_chat_enter)
-
-        # History text - not visible, just exists for data storage
-        # No word wrap for better screen reader accessibility
+        # Middle Section: History
         wx.StaticText(panel, label="&History")
-        self.history_text = wx.TextCtrl(
-            panel, size=(0, 0), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP
-        )
+        # No label add to sizer needed as StaticText above serves as label, 
+        # but we need to ensure the history box itself is visible.
+        # Adding a dedicated label in sizer:
+        history_label = wx.StaticText(panel, label="&History")
+        main_sizer.Add(history_label, 0, wx.ALL, 5)
 
-        # No sizers, no layout - audio-only interface
+        self.history_text = wx.TextCtrl(
+            panel, size=wx.DefaultSize, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP
+        )
+        # Give history proportion 1 to share vertical space with menu
+        main_sizer.Add(self.history_text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 5)
+
+        # Bottom Section: Chat
+        chat_label = wx.StaticText(panel, label="&Chat")
+        main_sizer.Add(chat_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 5)
+        
+        self.chat_input = wx.TextCtrl(panel, size=wx.DefaultSize, style=wx.TE_PROCESS_ENTER)
+        self.chat_input.Bind(wx.EVT_TEXT_ENTER, self.on_chat_enter)
+        main_sizer.Add(self.chat_input, 0, wx.EXPAND | wx.ALL, 5)
+
+        panel.SetSizer(main_sizer)
+        
+        # No Layout() call needed strictly here as Frame will do it on Show, 
+        # but good practice to allow panel to setup.
 
     def _setup_accelerators(self):
         """Setup keyboard accelerators."""
@@ -827,6 +855,9 @@ class MainWindow(wx.Frame):
         self.current_mode = "edit"
         self.edit_mode_callback = callback
         self.current_edit_read_only = read_only
+        
+        # Trigger layout update to handle visibility changes
+        self.Layout()
 
         # Don't speak prompt - screen reader will announce it when focusing the editbox
 
@@ -847,6 +878,9 @@ class MainWindow(wx.Frame):
 
         self.current_mode = "list"
         self.edit_mode_callback = None
+        
+        # Trigger layout update to handle visibility changes
+        self.Layout()
 
     def on_edit_enter(self, event):
         """Handle Enter key in edit mode input."""

@@ -9,9 +9,11 @@ description = "PlayPalace v11 Game Client"
 requires-python = ">=3.11"
 dependencies = [
     "wxPython>=4.2.0",
-    "accessible-output2>=0.16",
+    "accessible-output2==0.16",
     "websockets>=10.0",
     "sound-lib>=0.2.2",
+    "pyinstaller>=6.18.0",
+    "pyinstaller-versionfile>=3.0.1",
 ]
 
 [project.scripts]
