@@ -30,7 +30,7 @@ class MainWindow(wx.Frame):
         """
         super().__init__(
             parent=None,
-            title="PlayPalace 11",
+            title="V Continuum Game Center 2513",
             size=(800, 600),  # Changed from (1, 1) to visible size
         )
 

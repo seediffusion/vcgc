@@ -14,7 +14,7 @@ class RegistrationDialog(wx.Dialog):
 
     def __init__(self, parent, server_url):
         """Initialize the registration dialog."""
-        super().__init__(parent, title="Create Play Palace Account", size=(500, 450))
+        super().__init__(parent, title="Create VCGC Account", size=(500, 450))
 
         self.server_url = server_url
         self._create_ui()

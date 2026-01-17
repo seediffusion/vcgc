@@ -15,7 +15,7 @@ class LoginDialog(wx.Dialog):
 
     def __init__(self, parent=None):
         """Initialize the login dialog."""
-        super().__init__(parent, title="Play Palace Login", size=(450, 380))
+        super().__init__(parent, title="V Continuum Game Center Login", size=(450, 380))
 
         # Initialize config manager
         self.config_manager = ConfigManager()
@@ -47,7 +47,7 @@ class LoginDialog(wx.Dialog):
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Title
-        title = wx.StaticText(self.panel, label="PlayPalace 11.")
+        title = wx.StaticText(self.panel, label="VCGC 2513.")
         title_font = title.GetFont()
         title_font.PointSize += 4
         title_font = title_font.Bold()
