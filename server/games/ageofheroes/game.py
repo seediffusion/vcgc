@@ -110,6 +110,7 @@ class AgeOfHeroesPlayer(Player):
     has_stopped_trading: bool = False  # Left the auction
     trading_ticks_waited: int = 0  # Ticks spent waiting for trades
     has_made_offers: bool = False  # Whether bot has made offers this phase
+    pending_offer_card_index: int = -1  # Card selected to offer (-1 = none)
 
 
 @dataclass
@@ -260,6 +261,82 @@ class AgeOfHeroesGame(Game):
                 is_enabled="_is_trading_enabled",
                 is_hidden="_is_trading_hidden",
                 get_label="_get_stop_trading_label",
+            )
+        )
+
+        # Trade offer actions (one per potential card in hand)
+        for i in range(10):  # Max potential hand size
+            action_set.add(
+                Action(
+                    id=f"offer_card_{i}",
+                    label="",
+                    handler="_action_select_offer_card",
+                    is_enabled="_is_offer_card_enabled",
+                    is_hidden="_is_offer_card_hidden",
+                    get_label="_get_offer_card_label",
+                )
+            )
+
+        # Request selection actions (shown after selecting a card to offer)
+        # Any card option
+        action_set.add(
+            Action(
+                id="request_any",
+                label="",
+                handler="_action_select_request",
+                is_enabled="_is_request_enabled",
+                is_hidden="_is_request_menu_hidden",
+                get_label="_get_request_label",
+            )
+        )
+
+        # Standard resources (Iron, Wood, Grain, Stone, Gold)
+        for i, resource in enumerate(ResourceType):
+            action_set.add(
+                Action(
+                    id=f"request_resource_{i}",
+                    label="",
+                    handler="_action_select_request",
+                    is_enabled="_is_request_enabled",
+                    is_hidden="_is_request_menu_hidden",
+                    get_label="_get_request_label",
+                )
+            )
+
+        # Own tribe's special resource
+        action_set.add(
+            Action(
+                id="request_own_special",
+                label="",
+                handler="_action_select_request",
+                is_enabled="_is_request_enabled",
+                is_hidden="_is_request_menu_hidden",
+                get_label="_get_request_label",
+            )
+        )
+
+        # Event cards (Fortune, Olympics, Hero)
+        for event in [EventType.FORTUNE, EventType.OLYMPICS, EventType.HERO]:
+            action_set.add(
+                Action(
+                    id=f"request_event_{event}",
+                    label="",
+                    handler="_action_select_request",
+                    is_enabled="_is_request_enabled",
+                    is_hidden="_is_request_menu_hidden",
+                    get_label="_get_request_label",
+                )
+            )
+
+        # Cancel offer selection
+        action_set.add(
+            Action(
+                id="cancel_offer_selection",
+                label="Cancel",
+                handler="_action_cancel_offer_selection",
+                is_enabled="_is_request_enabled",
+                is_hidden="_is_request_menu_hidden",
+                get_label="_get_cancel_offer_label",
             )
         )
 
@@ -414,6 +491,138 @@ class AgeOfHeroesGame(Game):
         user = self.get_user(player)
         locale = user.locale if user else "en"
         return Localization.get(locale, "ageofheroes-stop-trading")
+
+    def _is_offer_card_enabled(self, player: Player) -> str | None:
+        """Offer card is enabled during fair phase if card can be offered."""
+        if self.status != "playing":
+            return "ageofheroes-game-not-started"
+        if self.phase != GamePhase.FAIR:
+            return "ageofheroes-wrong-phase"
+        if not isinstance(player, AgeOfHeroesPlayer):
+            return "Invalid player"
+        if player.has_stopped_trading:
+            return "ageofheroes-left-auction"
+        return None
+
+    def _is_offer_card_hidden(self, player: Player, action_id: str) -> Visibility:
+        """Offer card actions hidden if not in fair phase or card out of range."""
+        if self.phase != GamePhase.FAIR:
+            return Visibility.HIDDEN
+        if not isinstance(player, AgeOfHeroesPlayer):
+            return Visibility.HIDDEN
+        if player.has_stopped_trading:
+            return Visibility.HIDDEN
+
+        # Hide card selection when a card is already selected (show request menu instead)
+        if player.pending_offer_card_index >= 0:
+            return Visibility.HIDDEN
+
+        # Extract card index from action_id
+        try:
+            card_index = int(action_id.replace("offer_card_", ""))
+        except ValueError:
+            return Visibility.HIDDEN
+
+        # Hide if card index out of range
+        if card_index >= len(player.hand):
+            return Visibility.HIDDEN
+
+        # Check if card can be offered
+        from .trading import can_offer_card
+
+        error = can_offer_card(self, player, card_index)
+        if error:
+            return Visibility.HIDDEN
+
+        return Visibility.VISIBLE
+
+    def _get_offer_card_label(self, player: Player, action_id: str) -> str:
+        """Get label for offer card action - just the card name."""
+        if not isinstance(player, AgeOfHeroesPlayer):
+            return ""
+
+        # Extract card index from action_id
+        try:
+            card_index = int(action_id.replace("offer_card_", ""))
+        except ValueError:
+            return ""
+
+        if card_index >= len(player.hand):
+            return ""
+
+        card = player.hand[card_index]
+        user = self.get_user(player)
+        locale = user.locale if user else "en"
+        return get_card_name(card, locale)
+
+    def _is_request_enabled(self, player: Player) -> str | None:
+        """Request selection is enabled when a card is selected to offer."""
+        if self.status != "playing":
+            return "ageofheroes-game-not-started"
+        if self.phase != GamePhase.FAIR:
+            return "ageofheroes-wrong-phase"
+        if not isinstance(player, AgeOfHeroesPlayer):
+            return "Invalid player"
+        if player.pending_offer_card_index < 0:
+            return "No card selected"
+        return None
+
+    def _is_request_menu_hidden(self, player: Player, action_id: str) -> Visibility:
+        """Request menu actions hidden if no card selected or not in fair phase."""
+        if self.phase != GamePhase.FAIR:
+            return Visibility.HIDDEN
+        if not isinstance(player, AgeOfHeroesPlayer):
+            return Visibility.HIDDEN
+
+        # Only show when a card is selected
+        if player.pending_offer_card_index < 0:
+            return Visibility.HIDDEN
+
+        return Visibility.VISIBLE
+
+    def _get_request_label(self, player: Player, action_id: str) -> str:
+        """Get label for request action based on action_id."""
+        user = self.get_user(player)
+        locale = user.locale if user else "en"
+
+        # Any card
+        if action_id == "request_any":
+            return Localization.get(locale, "ageofheroes-any-card")
+
+        # Standard resources
+        if action_id.startswith("request_resource_"):
+            try:
+                resource_index = int(action_id.replace("request_resource_", ""))
+                resources = list(ResourceType)
+                if resource_index < len(resources):
+                    resource = resources[resource_index]
+                    dummy_card = Card(id=-1, card_type=CardType.RESOURCE, subtype=resource)
+                    return get_card_name(dummy_card, locale)
+            except ValueError:
+                pass
+            return ""
+
+        # Own tribe's special resource
+        if action_id == "request_own_special":
+            if isinstance(player, AgeOfHeroesPlayer) and player.tribe_state:
+                special = player.tribe_state.get_special_resource()
+                dummy_card = Card(id=-1, card_type=CardType.SPECIAL, subtype=special)
+                return get_card_name(dummy_card, locale)
+            return ""
+
+        # Event cards
+        if action_id.startswith("request_event_"):
+            event_type = action_id.replace("request_event_", "")
+            dummy_card = Card(id=-1, card_type=CardType.EVENT, subtype=event_type)
+            return get_card_name(dummy_card, locale)
+
+        return ""
+
+    def _get_cancel_offer_label(self, player: Player, action_id: str) -> str:
+        """Get label for cancel offer action."""
+        user = self.get_user(player)
+        locale = user.locale if user else "en"
+        return Localization.get(locale, "ageofheroes-cancel")
 
     # ==========================================================================
     # Action Handlers
@@ -956,6 +1165,7 @@ class AgeOfHeroesGame(Game):
                 player.has_stopped_trading = False
                 player.trading_ticks_waited = 0
                 player.has_made_offers = False
+                player.pending_offer_card_index = -1
 
         # Players draw cards based on road network
         self._distribute_fair_cards()
@@ -1081,6 +1291,118 @@ class AgeOfHeroesGame(Game):
         # Check if trading is complete
         self._check_trading_complete()
 
+    def _action_select_offer_card(self, player: Player, action_id: str) -> None:
+        """Handle card selection for trade offer - first step."""
+        if not isinstance(player, AgeOfHeroesPlayer):
+            return
+
+        if self.phase != GamePhase.FAIR:
+            return
+
+        if player.has_stopped_trading:
+            return
+
+        # Extract card index from action_id
+        try:
+            card_index = int(action_id.replace("offer_card_", ""))
+        except ValueError:
+            return
+
+        if card_index >= len(player.hand):
+            return
+
+        # Set the pending offer card
+        player.pending_offer_card_index = card_index
+
+        # Tell the player to select what they want
+        user = self.get_user(player)
+        if user:
+            card = player.hand[card_index]
+            card_name = get_card_name(card, user.locale)
+            user.speak_l("ageofheroes-select-request", card=card_name)
+
+        self.rebuild_all_menus()
+
+    def _action_select_request(self, player: Player, action_id: str) -> None:
+        """Handle request selection for trade offer - second step."""
+        if not isinstance(player, AgeOfHeroesPlayer):
+            return
+
+        if self.phase != GamePhase.FAIR:
+            return
+
+        if player.pending_offer_card_index < 0:
+            return
+
+        card_index = player.pending_offer_card_index
+        if card_index >= len(player.hand):
+            player.pending_offer_card_index = -1
+            self.rebuild_all_menus()
+            return
+
+        card = player.hand[card_index]
+
+        # Determine what was requested based on action_id
+        wanted_type: str | None = None
+        wanted_subtype: str | None = None
+
+        if action_id == "request_any":
+            # Any card - leave both as None
+            pass
+        elif action_id.startswith("request_resource_"):
+            # Standard resource
+            try:
+                resource_index = int(action_id.replace("request_resource_", ""))
+                resources = list(ResourceType)
+                if resource_index < len(resources):
+                    wanted_type = CardType.RESOURCE
+                    wanted_subtype = resources[resource_index]
+            except ValueError:
+                player.pending_offer_card_index = -1
+                self.rebuild_all_menus()
+                return
+        elif action_id == "request_own_special":
+            # Own tribe's special resource
+            if player.tribe_state:
+                wanted_type = CardType.SPECIAL
+                wanted_subtype = player.tribe_state.get_special_resource()
+        elif action_id.startswith("request_event_"):
+            # Event card (Fortune, Olympics, Hero)
+            event_type = action_id.replace("request_event_", "")
+            wanted_type = CardType.EVENT
+            wanted_subtype = event_type
+        else:
+            player.pending_offer_card_index = -1
+            self.rebuild_all_menus()
+            return
+
+        # Create the offer
+        offer = create_offer(
+            self,
+            player,
+            card_index,
+            wanted_type=wanted_type,
+            wanted_subtype=wanted_subtype,
+        )
+
+        if offer:
+            self._announce_offer(player, card, wanted_subtype)
+
+            # Check for matching trades immediately
+            self._check_and_execute_trades()
+
+        # Clear the pending offer
+        player.pending_offer_card_index = -1
+        self.rebuild_all_menus()
+
+    def _action_cancel_offer_selection(self, player: Player, action_id: str) -> None:
+        """Cancel the pending offer selection."""
+        if not isinstance(player, AgeOfHeroesPlayer):
+            return
+
+        player.pending_offer_card_index = -1
+        self.rebuild_all_menus()
+
     def _bot_do_trading(self, player: AgeOfHeroesPlayer) -> None:
         """Bot performs trading actions during fair phase."""
         if player.has_stopped_trading:
@@ -1145,16 +1467,28 @@ class AgeOfHeroesGame(Game):
                     self._announce_offer(player, card, wanted_special)
 
     def _announce_offer(
-        self, player: AgeOfHeroesPlayer, offered_card: Card, wanted_subtype: str
+        self, player: AgeOfHeroesPlayer, offered_card: Card, wanted_subtype: str | None
     ) -> None:
         """Announce a trade offer."""
         for p in self.players:
             user = self.get_user(p)
             if user:
                 offered_name = get_card_name(offered_card, user.locale)
-                # Get wanted name
-                wanted_card = Card(id=-1, card_type=CardType.SPECIAL, subtype=wanted_subtype)
-                wanted_name = get_card_name(wanted_card, user.locale)
+
+                # Get wanted name based on type
+                if wanted_subtype is None:
+                    wanted_name = Localization.get(user.locale, "ageofheroes-any-card")
+                elif wanted_subtype in [r for r in ResourceType]:
+                    wanted_card = Card(id=-1, card_type=CardType.RESOURCE, subtype=wanted_subtype)
+                    wanted_name = get_card_name(wanted_card, user.locale)
+                elif wanted_subtype in [s for s in SpecialResourceType]:
+                    wanted_card = Card(id=-1, card_type=CardType.SPECIAL, subtype=wanted_subtype)
+                    wanted_name = get_card_name(wanted_card, user.locale)
+                elif wanted_subtype in [e for e in EventType]:
+                    wanted_card = Card(id=-1, card_type=CardType.EVENT, subtype=wanted_subtype)
+                    wanted_name = get_card_name(wanted_card, user.locale)
+                else:
+                    wanted_name = wanted_subtype
 
                 if p == player:
                     user.speak_l(
