@@ -142,23 +142,23 @@ ageofheroes-draw-card-you = You draw { $card } from the deck.
 ageofheroes-your-action = What do you want to do?
 
 # Tax Collection
-ageofheroes-tax-collection = { $player } has { $cities } { $cities ->
+ageofheroes-tax-collection = { $player } chooses Tax Collection: { $cities } { $cities ->
     [one] city
     *[other] cities
-} and collects { $cards } { $cards ->
+} collects { $cards } { $cards ->
     [one] card
     *[other] cards
 }.
-ageofheroes-tax-collection-you = You have { $cities } { $cities ->
+ageofheroes-tax-collection-you = You choose Tax Collection: { $cities } { $cities ->
     [one] city
     *[other] cities
-} and collect { $cards } { $cards ->
+} collects { $cards } { $cards ->
     [one] card
     *[other] cards
 }.
-ageofheroes-tax-no-city = You have no surviving cities. Discard a card to draw a new one.
-ageofheroes-tax-no-city-done = { $player } exchanged a card since they have no cities.
-ageofheroes-tax-no-city-done-you = You exchanged { $card } for a new card.
+ageofheroes-tax-no-city = Tax Collection: You have no surviving cities. Discard a card to draw a new one.
+ageofheroes-tax-no-city-done = { $player } chooses Tax Collection but has no cities, so they exchange a card.
+ageofheroes-tax-no-city-done-you = Tax Collection: You exchanged { $card } for a new card.
 
 # Construction
 ageofheroes-construction-menu = What do you want to build?

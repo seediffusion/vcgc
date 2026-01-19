@@ -161,6 +161,7 @@ class AgeOfHeroesGame(Game):
     phase: str = GamePhase.SETUP
     sub_phase: str = ""
     current_day: int = 0  # Round counter
+    day_start_turn_index: int = 0  # Who started the current day (for turn cycling)
 
     # Supply tracking (shared pool)
     army_supply: int = DEFAULT_ARMY_SUPPLY
@@ -703,6 +704,7 @@ class AgeOfHeroesGame(Game):
             self.set_turn_players(active_players)
             first_index = active_players.index(first_player)
             self.turn_index = first_index
+            self.day_start_turn_index = first_index  # Track who starts each day
 
             # Deal initial hands (5 cards each)
             self._deal_initial_hands()
@@ -1698,9 +1700,6 @@ class AgeOfHeroesGame(Game):
             # Check for immediate event triggers (Hunger/Barbarians)
             self._check_drawn_card_event(player, drawn)
 
-        # Auto-collect special resources for monument
-        self._collect_special_resources(player)
-
         # Move to action selection
         self.sub_phase = PlaySubPhase.SELECT_ACTION
         self.announce_turn()
@@ -1974,6 +1973,11 @@ class AgeOfHeroesGame(Game):
 
     def _end_turn(self) -> None:
         """End the current turn and advance to next player."""
+        player = self.current_player
+        if isinstance(player, AgeOfHeroesPlayer):
+            # Collect special resources for monument (after action, before next turn)
+            self._collect_special_resources(player)
+
         # Check victory conditions
         winner = self._check_victory()
         if winner:
@@ -1983,7 +1987,8 @@ class AgeOfHeroesGame(Game):
         active_players = self.get_active_players()
         next_index = (self.turn_index + 1) % len(active_players)
 
-        if next_index == 0:
+        # Day is over when we cycle back to the player who started the day
+        if next_index == self.day_start_turn_index:
             # Start new day
             self._start_new_day()
         else:
@@ -1993,8 +1998,8 @@ class AgeOfHeroesGame(Game):
 
     def _start_new_day(self) -> None:
         """Start a new day (round)."""
-        # Reset turn index for the new day
-        self.turn_index = 0
+        # Set turn index to the day start player (maintains consistent turn order)
+        self.turn_index = self.day_start_turn_index
         # Return to prepare phase for new events
         self._start_prepare_phase()
 
