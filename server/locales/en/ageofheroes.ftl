@@ -99,7 +99,7 @@ ageofheroes-eruption = An eruption destroys one of { $player }'s cities.
 ageofheroes-eruption-you = An eruption destroys one of your cities.
 
 # Disaster effects
-ageofheroes-hunger-strikes = The grain is a lie.
+ageofheroes-hunger-strikes = Hunger strikes.
 ageofheroes-lose-card-hunger = You lose { $card }.
 ageofheroes-barbarians-pillage = Barbarians attack { $player }'s resources.
 ageofheroes-barbarians-attack = { $attacker } plays Barbarians against { $player }.
@@ -111,15 +111,15 @@ ageofheroes-block-with-card-you = You block the disaster using { $card }.
 # Targeted disaster cards (Earthquake/Eruption)
 ageofheroes-select-disaster-target = Select a target for { $card }.
 ageofheroes-no-targets = No valid targets available.
-ageofheroes-earthquake-strikes-you = { $attacker } plays Earthquake against you! Your armies are disabled.
+ageofheroes-earthquake-strikes-you = { $attacker } plays Earthquake against you. Your armies are disabled.
 ageofheroes-earthquake-strikes = { $attacker } plays Earthquake against { $player }.
 ageofheroes-armies-disabled = { $count } { $count ->
     [one] army is
     *[other] armies are
 } disabled for one turn.
-ageofheroes-eruption-strikes-you = { $attacker } plays Eruption against you! One of your cities is destroyed.
+ageofheroes-eruption-strikes-you = { $attacker } plays Eruption against you. One of your cities is destroyed.
 ageofheroes-eruption-strikes = { $attacker } plays Eruption against { $player }.
-ageofheroes-city-destroyed = A city is destroyed by the eruption!
+ageofheroes-city-destroyed = A city is destroyed by the eruption.
 
 # Fair phase
 ageofheroes-fair-start = The day dawns at the marketplace.
@@ -270,7 +270,7 @@ ageofheroes-battle-start = Battle begins. { $attacker }'s { $att_armies } { $att
 } versus { $defender }'s { $def_armies } { $def_armies ->
     [one] army
     *[other] armies
-}!
+}.
 ageofheroes-dice-roll-detailed = { $name } rolls { $dice }{ $general ->
     [0] {""}
     *[other] { " + { $general } from general" }
@@ -289,10 +289,10 @@ ageofheroes-dice-roll-detailed-you = You roll { $dice }{ $general ->
 } = { $total }.
 ageofheroes-round-attacker-wins = { $attacker } wins the round ({ $att_total } vs { $def_total }). { $defender } loses an army.
 ageofheroes-round-defender-wins = { $defender } defends successfully ({ $def_total } vs { $att_total }). { $attacker } loses an army.
-ageofheroes-round-draw = Both sides tie at { $total }. No armies are lost in the stalemate.
-ageofheroes-battle-victory-attacker = { $attacker } is victorious against { $defender }, whose armies were crushed.
-ageofheroes-battle-victory-defender = { $defender } holds the line! { $attacker }'s forces are slaughtered.
-ageofheroes-battle-mutual-defeat = Both armies are destroyed in the conflict between { $attacker } and { $defender }.
+ageofheroes-round-draw = Both sides tie at { $total }. No armies lost.
+ageofheroes-battle-victory-attacker = { $attacker } defeats { $defender }.
+ageofheroes-battle-victory-defender = { $defender } defends successfully against { $attacker }.
+ageofheroes-battle-mutual-defeat = Both { $attacker } and { $defender } lose all armies.
 ageofheroes-general-bonus = +{ $count } from { $count ->
     [one] general
     *[other] generals
@@ -337,7 +337,7 @@ ageofheroes-army-recover = { $player }'s armies recover from the earthquake.
 ageofheroes-army-recover-you = Your armies recover from the earthquake.
 
 # Olympics
-ageofheroes-olympics-cancel = { $player } plays Olympic Games. The armies are much too interested in watching these games, so they accidentally forget to fight each other.
+ageofheroes-olympics-cancel = { $player } plays Olympic Games. War cancelled.
 ageofheroes-olympics-prompt = { $attacker } has declared war. You have Olympic Games - use it to cancel?
 ageofheroes-yes = Yes
 ageofheroes-no = No
@@ -415,7 +415,7 @@ ageofheroes-hero-army = Army
 ageofheroes-hero-general = General
 
 # Fortune card
-ageofheroes-fortune-reroll = { $player } uses Fortune to reroll!
+ageofheroes-fortune-reroll = { $player } uses Fortune to reroll.
 ageofheroes-fortune-prompt = You lost the roll. Use Fortune to reroll?
 
 # Disabled action reasons
