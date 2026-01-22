@@ -530,9 +530,16 @@ class HoldemGame(Game):
         self.broadcast_l("holdem-blinds-posted", sb=sb_pay, bb=bb_pay)
 
     def _deal_hole_cards(self, players: list[HoldemPlayer]) -> None:
+        if not players:
+            return
+        if len(players) == 2:
+            start_index = self.table_state.button_index % len(players)
+        else:
+            start_index = (self.table_state.button_index + 1) % len(players)
+        order = players[start_index:] + players[:start_index]
         delay_ticks = 0
         for _ in range(2):
-            for p in players:
+            for p in order:
                 card = self.deck.draw_one() if self.deck else None
                 if card:
                     p.hand.append(card)

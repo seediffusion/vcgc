@@ -375,9 +375,13 @@ class FiveCardDrawGame(Game):
         self.broadcast_l("draw-antes-posted", amount=ante)
 
     def _deal_cards(self, players: list[FiveCardDrawPlayer], count: int) -> None:
+        if not players:
+            return
+        start_index = (self.table_state.button_index + 1) % len(players)
+        order = players[start_index:] + players[:start_index]
         delay_ticks = 0
         for _ in range(count):
-            for p in players:
+            for p in order:
                 card = self.deck.draw_one() if self.deck else None
                 if card:
                     p.hand.append(card)
