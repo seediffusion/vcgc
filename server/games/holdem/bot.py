@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ...game_utils.poker_evaluator import best_hand
-from .state import order_after_button
+from ...game_utils.poker_state import order_after_button
 
 if TYPE_CHECKING:
     from .game import HoldemGame, HoldemPlayer
