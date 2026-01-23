@@ -102,6 +102,7 @@ poker-high-card = { $high } high
 poker-pair-with = Pair of { $pair }, with { $rest }
 poker-pair = Pair of { $pair }
 poker-two-pair-with = Two Pair, { $high } and { $low }, with { $kicker }
+poker-two-pair = Two Pair, { $high } and { $low }
 poker-trips-with = Three of a Kind, { $trips }, with { $rest }
 poker-trips = Three of a Kind, { $trips }
 poker-straight-high = { $high } high Straight

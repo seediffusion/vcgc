@@ -102,6 +102,7 @@ poker-high-card = { $high }高牌
 poker-pair-with = 一对{ $pair }，带{ $rest }
 poker-pair = 一对{ $pair }
 poker-two-pair-with = 两对{ $high }和{ $low }，带{ $kicker }
+poker-two-pair = 两对{ $high }和{ $low }
 poker-trips-with = 三条{ $trips }，带{ $rest }
 poker-trips = 三条{ $trips }
 poker-straight-high = { $high }高顺子

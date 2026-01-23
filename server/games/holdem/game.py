@@ -940,7 +940,14 @@ class HoldemGame(Game):
             self.table_state.get_button_id(active_ids),
             lambda p: p.id,
             lambda p: (
-                ("poker-show-hand", {"player": p.name, "cards": read_cards(p.hand, "en"), "hand": describe_hand(best_hand(p.hand + self.community)[0], "en")}),
+                (
+                    "poker-show-hand",
+                    {
+                        "player": p.name,
+                        "cards": read_cards(p.hand, "en"),
+                        "hand": describe_hand(best_hand(p.hand + self.community)[0], "en"),
+                    },
+                ),
                 best_hand(p.hand + self.community)[0],
             ),
         )

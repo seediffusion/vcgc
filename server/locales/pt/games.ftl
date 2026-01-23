@@ -102,6 +102,7 @@ poker-high-card = Carta alta, { $high }
 poker-pair-with = Par de { $pair }, com { $rest }
 poker-pair = Par de { $pair }
 poker-two-pair-with = Dois pares, { $high } e { $low }, com { $kicker }
+poker-two-pair = Dois pares, { $high } e { $low }
 poker-trips-with = Trinca de { $trips }, com { $rest }
 poker-trips = Trinca de { $trips }
 poker-straight-high = Sequência, { $high } alta

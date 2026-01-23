@@ -196,6 +196,27 @@ def describe_partial_hand(cards: list[Card], locale: str = "en") -> str:
         if kickers:
             return Localization.get(locale, "poker-trips-with", trips=trips, rest=kickers)
         return Localization.get(locale, "poker-trips", trips=trips)
+    if by_count[0][0] == 2 and len(by_count) > 1 and by_count[1][0] == 2:
+        high_pair = max(by_count[0][1], by_count[1][1])
+        low_pair = min(by_count[0][1], by_count[1][1])
+        high_pair_name = _cap(_rank_name_plural(high_pair, locale))
+        low_pair_name = _cap(_rank_name_plural(low_pair, locale))
+        kickers = _rank_list(
+            [r for r in ranks if r not in (by_count[0][1], by_count[1][1])],
+            locale,
+            cap=True,
+        )
+        if kickers:
+            return Localization.get(
+                locale,
+                "poker-two-pair-with",
+                high=high_pair_name,
+                low=low_pair_name,
+                kicker=kickers,
+            )
+        return Localization.get(
+            locale, "poker-two-pair", high=high_pair_name, low=low_pair_name
+        )
     if by_count[0][0] == 2:
         pair = _cap(_rank_name_plural(by_count[0][1], locale))
         kickers = _rank_list([r for r in ranks if r != by_count[0][1]], locale, cap=True)
