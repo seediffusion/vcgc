@@ -753,6 +753,8 @@ class HoldemGame(Game):
             self.play_sound("game_3cardpoker/bet.ogg")
             poker_log.log_call(self.action_log, p.name, pay)
             self.broadcast_l("poker-player-calls", player=p.name, amount=pay)
+        if p.all_in and pay > 0:
+            self.broadcast_l("poker-player-all-in", player=p.name, amount=pay)
         self._sync_team_scores()
         self._after_action()
 
@@ -798,6 +800,8 @@ class HoldemGame(Game):
         self.betting.record_bet(p.id, total, is_raise=True)
         poker_log.log_raise(self.action_log, p.name, total)
         self.broadcast_l("poker-player-raises", player=p.name, amount=total)
+        if p.all_in:
+            self.broadcast_l("poker-player-all-in", player=p.name, amount=total)
         self._sync_team_scores()
         self._after_action()
 
@@ -840,6 +844,8 @@ class HoldemGame(Game):
         else:
             poker_log.log_call(self.action_log, p.name, pay)
             self.broadcast_l("poker-player-calls", player=p.name, amount=pay)
+        if p.all_in:
+            self.broadcast_l("poker-player-all-in", player=p.name, amount=pay)
         self._sync_team_scores()
         self._after_action()
 
@@ -904,8 +910,7 @@ class HoldemGame(Game):
     def _resolve_pots(self) -> None:
         self.last_showdown_winner_ids.clear()
         pots = self.pot_manager.get_pots()
-        single_awards: dict[str, dict[str, object]] = {}
-        for pot in pots:
+        for pot_index, pot in enumerate(pots):
             eligible_players = [self.get_player_by_id(pid) for pid in pot.eligible_player_ids]
             eligible_players = [p for p in eligible_players if isinstance(p, HoldemPlayer)]
             if not eligible_players:
@@ -929,40 +934,39 @@ class HoldemGame(Game):
             desc = describe_hand(best_score, "en")
             if len(winners) == 1:
                 winner = winners[0]
-                entry = single_awards.get(winner.id)
-                if entry:
-                    entry["amount"] = int(entry["amount"]) + pot.amount
+                cards = read_cards(winner.hand, "en")
+                if pot_index == 0 or len(pot.eligible_player_ids) <= 1:
+                    self.play_sound(random.choice(["game_blackjack/win1.ogg", "game_blackjack/win2.ogg", "game_blackjack/win3.ogg"]))
+                    self.broadcast_l(
+                        "poker-player-wins-pot-hand",
+                        player=winner.name,
+                        amount=pot.amount,
+                        cards=cards,
+                        hand=desc,
+                    )
                 else:
-                    single_awards[winner.id] = {
-                        "name": winner.name,
-                        "amount": pot.amount,
-                        "cards": read_cards(winner.hand, "en"),
-                        "hand": desc,
-                    }
+                    self.play_sound(random.choice(["game_blackjack/win1.ogg", "game_blackjack/win2.ogg", "game_blackjack/win3.ogg"]))
+                    self.broadcast_l(
+                        "poker-player-wins-side-pot-hand",
+                        player=winner.name,
+                        amount=pot.amount,
+                        index=pot_index,
+                        cards=cards,
+                        hand=desc,
+                    )
             else:
                 names = ", ".join(w.name for w in winners)
                 self.play_sound(random.choice(["game_blackjack/win1.ogg", "game_blackjack/win2.ogg", "game_blackjack/win3.ogg"]))
-                self.broadcast_l("poker-players-split-pot", players=names, amount=pot.amount, hand=desc)
-        if single_awards:
-            ordered_ids = order_after_button(
-                [p.id for p in self.get_active_players()],
-                self.table_state.get_button_id([p.id for p in self.get_active_players()]),
-            )
-            for winner_id in sorted(
-                single_awards.keys(),
-                key=lambda pid: ordered_ids.index(pid) if pid in ordered_ids else len(ordered_ids),
-            ):
-                entry = single_awards[winner_id]
-                self.play_sound(
-                    random.choice(["game_blackjack/win1.ogg", "game_blackjack/win2.ogg", "game_blackjack/win3.ogg"])
-                )
-                self.broadcast_l(
-                    "poker-player-wins-pot-hand",
-                    player=entry["name"],
-                    amount=entry["amount"],
-                    cards=entry["cards"],
-                    hand=entry["hand"],
-                )
+                if pot_index == 0:
+                    self.broadcast_l("poker-players-split-pot", players=names, amount=pot.amount, hand=desc)
+                else:
+                    self.broadcast_l(
+                        "poker-players-split-side-pot",
+                        players=names,
+                        amount=pot.amount,
+                        index=pot_index,
+                        hand=desc,
+                    )
         self._sync_team_scores()
 
     def _announce_showdown_hands(self, skip_best: bool = False) -> None:
@@ -970,7 +974,7 @@ class HoldemGame(Game):
         if len(active) <= 1:
             return
         skip_ids: set[str] = set()
-        if skip_best and len(self.last_showdown_winner_ids) == 1:
+        if skip_best and self.last_showdown_winner_ids:
             skip_ids = set(self.last_showdown_winner_ids)
         active_ids = [p.id for p in active]
         lines = format_showdown_lines(
@@ -1264,6 +1268,7 @@ class HoldemGame(Game):
     def build_game_result(self) -> GameResult:
         active = self.get_active_players()
         winner = max(active, key=lambda p: p.chips, default=None)
+        final_chips = {p.name: p.chips for p in active}
         return GameResult(
             game_type=self.get_type(),
             timestamp=datetime.now().isoformat(),
@@ -1279,11 +1284,20 @@ class HoldemGame(Game):
             custom_data={
                 "winner_name": winner.name if winner else None,
                 "winner_chips": winner.chips if winner else 0,
+                "final_chips": final_chips,
             },
         )
 
     def _end_game(self, winner: HoldemPlayer | None) -> None:
-        self.play_sound(random.choice(["game_blackjack/win1.ogg", "game_blackjack/win2.ogg"]))
+        self.play_sound("game_pig/win.ogg")
         if winner:
             self.broadcast_l("poker-player-wins-game", player=winner.name)
         self.finish_game()
+
+    def format_end_screen(self, result: GameResult, locale: str) -> list[str]:
+        lines = [Localization.get(locale, "game-final-scores")]
+        final_chips = result.custom_data.get("final_chips", {})
+        sorted_scores = sorted(final_chips.items(), key=lambda item: item[1], reverse=True)
+        for i, (name, chips) in enumerate(sorted_scores, 1):
+            lines.append(f"{i}. {name}: {chips} chips")
+        return lines

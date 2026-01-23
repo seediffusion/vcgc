@@ -41,7 +41,10 @@ poker-player-all-in = { $player } goes all in for { $amount } chips.
 
 poker-player-wins-pot = { $player } wins { $amount } chips.
 poker-player-wins-pot-hand = { $player } wins { $amount } chips with { $cards } for { $hand }.
+poker-player-wins-side-pot-hand = { $player } wins side pot { $index } of { $amount } chips with { $cards } for { $hand }.
 poker-players-split-pot = { $players } split { $amount } chips with { $hand }.
+poker-players-split-side-pot = { $players } split side pot { $index } of { $amount } chips with { $hand }.
+poker-player-all-in = { $player } goes all in for { $amount } chips.
 poker-player-wins-game = { $player } wins the game.
 
 poker-showdown = Showdown.

@@ -23,14 +23,31 @@ draw-enter-max-raises = Enter max raises (0 for unlimited)
 draw-option-changed-max-raises = Max raises set to { $count }.
 
 draw-antes-posted = Antes posted: { $amount }.
-draw-betting-round-1 = Betting round 1.
-draw-betting-round-2 = Betting round 2.
+draw-betting-round-1 = Betting round.
+draw-betting-round-2 = Betting round.
 draw-begin-draw = Draw phase.
+draw-not-betting = Nie możesz licytować podczas wymiany kart.
 
 draw-toggle-discard = Toggle discard for card { $index }
+draw-card-keep = { $card }
+draw-card-discard = Odrzuć { $card }
+draw-card-kept = Zachowaj { $card }.
+draw-card-discarded = Odrzuć { $card }.
 draw-draw-cards = Draw cards
-draw-you-draw = You draw { $count } cards.
-draw-player-draws = { $player } draws { $count } cards.
+draw-draw-cards-count = Draw { $count } { $count ->
+    [one] card
+   *[other] cards
+}
+draw-dealt-cards = You are dealt { $cards }.
+draw-you-drew-cards = Dobierasz { $cards }.
+draw-you-draw = You draw { $count } { $count ->
+    [one] card
+   *[other] cards
+}.
+draw-player-draws = { $player } draws { $count } { $count ->
+    [one] card
+   *[other] cards
+}.
 draw-you-stand-pat = You stand pat.
 draw-player-stands-pat = { $player } stands pat.
 draw-you-discard-limit = You may discard up to { $count } cards.
