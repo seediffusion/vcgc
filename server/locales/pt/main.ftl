@@ -48,6 +48,7 @@ spectator-joined = Entrou na mesa de { $host } como espectador.
 table-no-players = Sem jogadores.
 table-players-one = { $count } jogador: { $players }.
 table-players-many = { $count } jogadores: { $players }.
+table-spectators = Espectadores: { $spectators }.
 
 # Modo espectador
 spectate = Assistir

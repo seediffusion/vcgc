@@ -48,6 +48,7 @@ spectator-joined = 已作为观众加入 { $host } 的桌台。
 table-no-players = 没有玩家。
 table-players-one = { $count } 位玩家：{ $players }。
 table-players-many = { $count } 位玩家：{ $players }。
+table-spectators = 观众：{ $spectators }。
 
 # 观众模式
 spectate = 观战

@@ -133,6 +133,7 @@ game-no-turn = No one's turn right now.
 table-no-players = No players.
 table-players-one = { $count } player: { $players }.
 table-players-many = { $count } players: { $players }.
+table-spectators = Spectators: { $spectators }.
 game-leave = Leave
 game-over = Game Over
 game-final-scores = Final Scores

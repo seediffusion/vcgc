@@ -54,6 +54,7 @@ spectator-joined = Đã vào xem bàn của { $host }.
 table-no-players = Không có người chơi.
 table-players-one = { $count } người chơi: { $players }.
 table-players-many = { $count } người chơi: { $players }.
+table-spectators = Khán giả: { $spectators }.
 
 # Chế độ khán giả
 spectate = Xem

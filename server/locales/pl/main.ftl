@@ -131,6 +131,7 @@ game-no-turn = nikt teraz nie ma tury.
 table-no-players = Brak graczy.
 table-players-one = { $count } gracz: { $players }.
 table-players-many = { $count } graczy: { $players }.
+table-spectators = Widzowie: { $spectators }.
 game-leave = Opuść
 game-over = Koniec gry
 game-final-scores = Wyniki końcowe
