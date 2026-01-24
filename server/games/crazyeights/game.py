@@ -476,7 +476,7 @@ class CrazyEightsGame(Game):
         # Rotate dealer/first player each hand
         if self.turn_player_ids:
             self.dealer_index = (self.dealer_index + 1) % len(self.turn_player_ids)
-            self.turn_index = self.dealer_index
+            self.turn_index = (self.dealer_index + 1) % len(self.turn_player_ids)
         else:
             self.dealer_index = -1
             self.turn_index = 0
@@ -1134,7 +1134,11 @@ class CrazyEightsGame(Game):
             )
 
     def _broadcast_start_card(self) -> None:
-        dealer = self.current_player
+        dealer = (
+            self.get_player_by_id(self.turn_player_ids[self.dealer_index])
+            if self.turn_player_ids and self.dealer_index >= 0
+            else None
+        )
         dealer_name = dealer.name if dealer else Localization.get("en", "unknown-player")
         for p in self.players:
             user = self.get_user(p)
