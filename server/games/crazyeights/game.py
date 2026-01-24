@@ -594,7 +594,6 @@ class CrazyEightsGame(Game):
                 self._end_round(p, last_card=card)
                 return
             self.awaiting_wild_suit = True
-            self.broadcast_l("crazyeights-wild-played", player=p.name)
             self._start_turn_timer()  # reset timer for suit selection
             if p.is_bot:
                 BotHelper.jolt_bot(p, ticks=random.randint(20, 30))
@@ -648,7 +647,7 @@ class CrazyEightsGame(Game):
             self.play_sound("game_crazyeights/draw.ogg")
         self._start_turn_timer()  # reset timer after drawing
         self._broadcast_draw(p, 1)
-        selection_id = f"play_card_{card.id}" if playable else None
+        selection_id = f"play_card_{card.id}"
         self.update_player_menu(p, selection_id=selection_id)
         if p.is_bot:
             BotHelper.jolt_bot(p, ticks=random.randint(20, 30))
