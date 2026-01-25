@@ -81,6 +81,10 @@ class MenuList(wx.ListBox):
             if is_arrow:
                 self._handle_grid_navigation(key_code)
                 return
+        else:
+            if key_code in (wx.WXK_UP, wx.WXK_DOWN) and self.GetCount() == 1:
+                self._repeat_single_item()
+                return
 
         # Check if this is a letter, number, space, or enter
         is_letter = ord("A") <= key_code <= ord("Z")
@@ -133,6 +137,16 @@ class MenuList(wx.ListBox):
 
         # For all other keys (arrows, etc.), let them work normally
         event.Skip()
+
+    def _repeat_single_item(self):
+        """Repeat the single menu item when up/down is pressed."""
+        if self.GetCount() != 1:
+            return
+        self.SetSelection(0)
+        self.EnsureVisible(0)
+        evt = wx.CommandEvent(wx.EVT_LISTBOX.typeId, self.GetId())
+        evt.SetInt(0)
+        self.GetEventHandler().ProcessEvent(evt)
 
     def on_char(self, event):
         """Handle CHAR events, specifically for Enter which may bypass KEY_DOWN."""

@@ -506,7 +506,10 @@ class MainWindow(wx.Frame):
             return
         elif key_code == wx.WXK_F5:
             key_name = "f5"
-        elif key_code == wx.WXK_ESCAPE:
+        elif key_code == wx.WXK_ESCAPE or key_code == wx.WXK_BACK:
+            if key_code == wx.WXK_BACK and self.current_menu_id == "main_menu":
+                event.Skip()
+                return
             # Handle escape based on current menu's escape_behavior
             if self.escape_behavior == "select_last_option":
                 # Send selection for the last item without actually moving focus

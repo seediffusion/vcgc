@@ -1,6 +1,8 @@
 """Main server class that ties everything together."""
 
 import asyncio
+import logging
+import sys
 from pathlib import Path
 
 import json
@@ -342,6 +344,10 @@ class Server:
         items = [
             MenuItem(text=Localization.get(user.locale, "play"), id="play"),
             MenuItem(
+                text=Localization.get(user.locale, "view-active-tables"),
+                id="active_tables",
+            ),
+            MenuItem(
                 text=Localization.get(user.locale, "saved-tables"), id="saved_tables"
             ),
             MenuItem(
@@ -370,9 +376,6 @@ class Server:
         for category_key in sorted(categories.keys()):
             category_name = Localization.get(user.locale, category_key)
             items.append(MenuItem(text=category_name, id=f"category_{category_key}"))
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "view-active-tables"), id="active_tables")
-        )
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
 
         user.show_menu(
@@ -705,6 +708,8 @@ class Server:
         """Handle main menu selection."""
         if selection_id == "play":
             self._show_categories_menu(user)
+        elif selection_id == "active_tables":
+            self._show_active_tables_menu(user)
         elif selection_id == "saved_tables":
             self._show_saved_tables_menu(user)
         elif selection_id == "leaderboards":
@@ -802,8 +807,6 @@ class Server:
         if selection_id.startswith("category_"):
             category = selection_id[9:]  # Remove "category_" prefix
             self._show_games_menu(user, category)
-        elif selection_id == "active_tables":
-            self._show_active_tables_menu(user)
         elif selection_id == "back":
             self._show_main_menu(user)
 
@@ -815,7 +818,7 @@ class Server:
             game_type = selection_id[5:]  # Remove "game_" prefix
             self._show_tables_menu(user, game_type)
         elif selection_id == "back":
-            self._show_categories_menu(user)
+            self._show_main_menu(user)
 
     async def _handle_tables_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -923,7 +926,7 @@ class Server:
                 user.speak_l("table-not-exists")
                 self._show_active_tables_menu(user)
         elif selection_id == "back":
-            self._show_categories_menu(user)
+            self._show_main_menu(user)
 
     def _return_from_join_menu(self, user: NetworkUser, state: dict) -> None:
         """Return to the appropriate tables menu after join."""
@@ -2170,6 +2173,37 @@ async def run_server(
         ssl_cert: Path to SSL certificate file (for WSS support)
         ssl_key: Path to SSL private key file (for WSS support)
     """
+    logging.basicConfig(
+        filename="errors.log",
+        level=logging.ERROR,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
+    def _log_uncaught(exc_type, exc, tb):
+        if exc_type in (KeyboardInterrupt, asyncio.CancelledError):
+            return
+        logging.getLogger("playpalace").exception(
+            "Uncaught exception", exc_info=(exc_type, exc, tb)
+        )
+
+    sys.excepthook = _log_uncaught
+    loop = asyncio.get_running_loop()
+
+    def _asyncio_exception_handler(loop, context):
+        exc = context.get("exception")
+        if isinstance(exc, asyncio.CancelledError):
+            return
+        if exc:
+            logging.getLogger("playpalace").exception(
+                "Asyncio exception", exc_info=exc
+            )
+        else:
+            logging.getLogger("playpalace").error(
+                "Asyncio error: %s", context.get("message")
+            )
+
+    loop.set_exception_handler(_asyncio_exception_handler)
+
     server = Server(host=host, port=port, ssl_cert=ssl_cert, ssl_key=ssl_key)
     await server.start()
 
