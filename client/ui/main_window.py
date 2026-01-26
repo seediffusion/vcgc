@@ -1201,10 +1201,8 @@ class MainWindow(wx.Frame):
                     updated = True
 
             # Update server profile
-            if self.server_id in self.config_manager.profiles["servers"]:
-                server_overrides = self.config_manager.profiles["servers"][
-                    self.server_id
-                ].setdefault("options_overrides", {})
+            if "server_options" in self.config_manager.profiles and self.server_id in self.config_manager.profiles["server_options"]:
+                server_overrides = self.config_manager.profiles["server_options"][self.server_id]
                 server_local_table = server_overrides.setdefault("local_table", {})
                 server_creation_notifications = server_local_table.setdefault(
                     "creation_notifications", {}
@@ -1235,10 +1233,8 @@ class MainWindow(wx.Frame):
                 updated = True
 
             # Update server profile - rebuild to match server order
-            if self.server_id in self.config_manager.profiles["servers"]:
-                server_overrides = self.config_manager.profiles["servers"][
-                    self.server_id
-                ].setdefault("options_overrides", {})
+            if "server_options" in self.config_manager.profiles and self.server_id in self.config_manager.profiles["server_options"]:
+                server_overrides = self.config_manager.profiles["server_options"][self.server_id]
                 social_overrides = server_overrides.setdefault("social", {})
                 lang_subscriptions = social_overrides.get(
                     "language_subscriptions", {}
