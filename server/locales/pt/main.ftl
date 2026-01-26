@@ -4,6 +4,7 @@
 category-card-games = Jogos de Cartas
 category-dice-games = Jogos de Dados
 category-rb-play-center = RB Play Center
+category-poker = Pôquer
 category-uncategorized = Sem Categoria
 
 # Títulos de menu
@@ -14,6 +15,7 @@ tables-menu-title = Mesas Disponíveis
 
 # Itens de menu
 play = Jogar
+view-active-tables = Ver mesas ativas
 options = Opções
 logout = Sair
 back = Voltar
@@ -27,6 +29,7 @@ remove-bot = Remover bot
 actions-menu = Menu de ações
 save-table = Salvar mesa
 whose-turn = De quem é a vez
+whos-at-table = Quem está na mesa
 check-scores = Ver pontuação
 check-scores-detailed = Pontuação detalhada
 
@@ -37,17 +40,27 @@ table-left = { $player } saiu da mesa.
 new-host = { $player } agora é o anfitrião.
 waiting-for-players = Aguardando jogadores. { $current }/{ $min } mínimo, { $max } máximo.
 game-starting = O jogo está começando!
-table-listing = Mesa de { $host } ({ $count } jogadores)
+table-listing = Mesa de { $host } ({ $count } usuários)
+table-listing-one = Mesa de { $host } ({ $count } usuário)
+table-listing-with = Mesa de { $host } ({ $count } usuários) com { $members }
+table-listing-game = { $game }: mesa de { $host } ({ $count } usuários)
+table-listing-game-one = { $game }: mesa de { $host } ({ $count } usuário)
+table-listing-game-with = { $game }: mesa de { $host } ({ $count } usuários) com { $members }
 table-not-exists = A mesa não existe mais.
 table-full = A mesa está cheia.
 player-replaced-by-bot = { $player } saiu e foi substituído por um bot.
 player-took-over = { $player } assumiu o controle do bot.
 spectator-joined = Entrou na mesa de { $host } como espectador.
+table-no-players = Sem jogadores.
+table-players-one = { $count } jogador: { $players }.
+table-players-many = { $count } jogadores: { $players }.
+table-spectators = Espectadores: { $spectators }.
 
 # Modo espectador
 spectate = Assistir
 now-playing = { $player } agora está jogando.
 now-spectating = { $player } agora está assistindo.
+spectator-left = { $player } parou de assistir.
 
 # Geral
 welcome = Bem-vindo ao PlayPalace!
@@ -56,11 +69,12 @@ goodbye = Até logo!
 # Anúncios de presença do usuário
 user-online = { $player } entrou online.
 user-offline = { $player } saiu.
+online-users-none = Nenhum usuário online.
+online-users-one = 1 usuário: { $users }
+online-users-many = { $count } usuários: { $users }
 
 # Opções
 language = Idioma
-language-english = Inglês
-language-portuguese = Português
 language-option = Idioma: { $language }
 language-changed = Idioma alterado para { $language }.
 
@@ -75,6 +89,8 @@ turn-sound-option = Som de turno: { $status }
 clear-kept-option = Limpar dados mantidos ao rolar: { $status }
 dice-keeping-style-option = Estilo de manter dados: { $style }
 dice-keeping-style-changed = Estilo de manter dados definido para { $style }.
+dice-keeping-style-indexes = Índices dos dados
+dice-keeping-style-values = Valores dos dados
 
 # Nomes de bots
 cancel = Cancelar
@@ -168,3 +184,6 @@ predict-entry-2p = { $rank }. { $player } (classificação: { $rating }, { $prob
 predict-unavailable = Previsões de classificação não estão disponíveis.
 predict-need-players = Necessário pelo menos 2 jogadores humanos para previsões.
 action-need-more-humans = Necessário mais jogadores humanos.
+confirm-leave-game = Tem certeza de que deseja sair da mesa?
+confirm-yes = Sim
+confirm-no = Não

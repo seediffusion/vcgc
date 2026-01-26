@@ -4,6 +4,7 @@
 category-card-games = Card Games
 category-dice-games = Dice Games
 category-rb-play-center = RB Play Center
+category-poker = Poker
 category-uncategorized = Uncategorized
 
 # Menu titles
@@ -14,6 +15,7 @@ tables-menu-title = Available Tables
 
 # Menu items
 play = Play
+view-active-tables = View active tables
 options = Options
 logout = Logout
 back = Back
@@ -30,6 +32,7 @@ remove-bot = Remove bot
 actions-menu = Actions menu
 save-table = Save table
 whose-turn = Whose turn
+whos-at-table = Who's at the table
 check-scores = Check scores
 check-scores-detailed = Detailed scores
 
@@ -43,7 +46,12 @@ table-left = { $player } left the table.
 new-host = { $player } is now the host.
 waiting-for-players = Waiting for players. { $current }/{ $min } minimum, { $max } maximum.
 game-starting = Game starting!
-table-listing = { $host }'s table ({ $count } players)
+table-listing = { $host }'s table ({ $count } users)
+table-listing-one = { $host }'s table ({ $count } user)
+table-listing-with = { $host }'s table ({ $count } users) with { $members }
+table-listing-game = { $game }: { $host }'s table ({ $count } users)
+table-listing-game-one = { $game }: { $host }'s table ({ $count } user)
+table-listing-game-with = { $game }: { $host }'s table ({ $count } users) with { $members }
 table-not-exists = Table no longer exists.
 table-full = Table is full.
 player-replaced-by-bot = { $player } left and was replaced by a bot.
@@ -54,6 +62,7 @@ spectator-joined = Joined { $host }'s table as a spectator.
 spectate = Spectate
 now-playing = { $player } is now playing.
 now-spectating = { $player } is now spectating.
+spectator-left = { $player } stopped spectating.
 
 # General
 welcome = Welcome to PlayPalace!
@@ -62,10 +71,15 @@ goodbye = Goodbye!
 # User presence announcements
 user-online = { $player } came online.
 user-offline = { $player } went offline.
+user-is-admin = { $player } is an administrator of PlayPalace.
+online-users-none = No users online.
+online-users-one = 1 user: { $users }
+online-users-many = { $count } users: { $users }
+online-user-not-in-game = Not in game
+online-user-waiting-approval = Waiting for approval
 
 # Options
 language = Language
-language-english = English
 language-option = Language: { $language }
 language-changed = Language set to { $language }.
 
@@ -80,6 +94,8 @@ turn-sound-option = Turn sound: { $status }
 clear-kept-option = Clear kept dice when rolling: { $status }
 dice-keeping-style-option = Dice keeping style: { $style }
 dice-keeping-style-changed = Dice keeping style set to { $style }.
+dice-keeping-style-indexes = Dice indexes
+dice-keeping-style-values = Dice values
 
 # Bot names
 cancel = Cancel
@@ -127,6 +143,10 @@ dice-no-dice = No dice available.
 # Game actions
 game-turn-start = { $player }'s turn.
 game-no-turn = No one's turn right now.
+table-no-players = No players.
+table-players-one = { $count } player: { $players }.
+table-players-many = { $count } players: { $players }.
+table-spectators = Spectators: { $spectators }.
 game-leave = Leave
 game-over = Game Over
 game-final-scores = Final Scores
@@ -210,3 +230,24 @@ predict-entry-2p = { $rank }. { $player } (rating: { $rating }, { $probability }
 predict-unavailable = Rating predictions are not available.
 predict-need-players = Need at least 2 human players for predictions.
 action-need-more-humans = Need more human players.
+confirm-leave-game = Are you sure you want to leave the table?
+confirm-yes = Yes
+confirm-no = No
+
+# Administration
+administration = Administration
+admin-menu-title = Administration
+
+# Account approval
+account-approval = Account Approval
+account-approval-menu-title = Account Approval
+no-pending-accounts = No pending accounts.
+approve-account = Approve
+decline-account = Decline
+account-approved = { $player }'s account has been approved.
+account-declined = { $player }'s account has been declined and deleted.
+
+# Waiting for approval (shown to unapproved users)
+waiting-for-approval = Your account is waiting for approval by an administrator. Please wait...
+account-approved-welcome = Your account has been approved! Welcome to PlayPalace.
+account-declined-goodbye = Your account request has been declined.

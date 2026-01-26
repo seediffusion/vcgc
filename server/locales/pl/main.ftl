@@ -4,6 +4,7 @@
 category-card-games = Karcianki
 category-dice-games = gry z kośćmi
 category-rb-play-center = RB Play Center
+category-poker = Poker
 category-uncategorized = niezkategoryzowane
 
 # Menu titles
@@ -12,6 +13,7 @@ play-menu-title = graj
 categories-menu-title = kategorje gier
 tables-menu-title = dostępne stoły
 play = Play
+view-active-tables = Pokaż aktywne stoły
 options = Opcje
 logout = Wylogój się
 back = wróć
@@ -28,6 +30,7 @@ remove-bot = Usuń bota
 actions-menu = Menu akcji
 save-table = zapisz stół
 whose-turn = czyja tura?
+whos-at-table = kto jest przy stole
 check-scores = sprawdź wyniki
 check-scores-detailed = Szczegułowe wyniki
 
@@ -41,7 +44,12 @@ table-left = { $player } opuścił stół.
 new-host = { $player } jest teraz hostem.
 waiting-for-players = Stół czeka na graczy, { $current }/{ $min } graczy, minimum, { $max } max
 game-starting = gra się zaczyna!
-table-listing = { stół od $host }' ({ $count } graczy)
+table-listing = { stół od $host }' ({ $count } użytkowników)
+table-listing-one = { stół od $host }' ({ $count } użytkownik)
+table-listing-with = { stół od $host }' ({ $count } użytkowników) z { $members }
+table-listing-game = { $game }: { stół od $host }' ({ $count } użytkowników)
+table-listing-game-one = { $game }: { stół od $host }' ({ $count } użytkownik)
+table-listing-game-with = { $game }: { stół od $host }' ({ $count } użytkowników) z { $members }
 table-not-exists = Ten stół jóż nie istnieje
 table-full = Stół jest pełny.
 player-replaced-by-bot = { $player } opuścił grę, i został zastąpiony botem.
@@ -52,6 +60,7 @@ spectator-joined = dołączył stół { $host } table jako spektator.
 spectate = śledź
 now-playing = { $player } dołącza do rozgrywki
 now-spectating = { $player } teraz śledzi rozgrywkę
+spectator-left = { $player } przestał śledzić.
 
 # General
 welcome = witaj w Play Palace!
@@ -60,10 +69,12 @@ goodbye = pa!
 # User presence announcements
 user-online = { $player } jest online.
 user-offline = { $player } poszedł offline
+online-users-none = Brak użytkowników online.
+online-users-one = 1 użytkownik: { $users }
+online-users-many = { $count } użytkowników: { $users }
 
 # Options
 language = Język
-language-polish = Polski
 language-option = Język: { $language }
 language-changed = zmieniono język na  { $language }.
 
@@ -78,6 +89,8 @@ turn-sound-option = Dźwięk tury { $status }
 clear-kept-option = odznacz kostki po rzucie: { $status }
 dice-keeping-style-option = Styl zatrzymania kostek: { $style }
 dice-keeping-style-changed = styl zatrzymania kostek po rzucie zmieniony na { $style }.
+dice-keeping-style-indexes = Indeksy kości
+dice-keeping-style-values = Wartości kości
 
 # Bot names
 cancel = Anuluj
@@ -125,6 +138,10 @@ dice-no-dice = brak kości
 # Game actions
 game-turn-start = { tura $player }.
 game-no-turn = nikt teraz nie ma tury.
+table-no-players = Brak graczy.
+table-players-one = { $count } gracz: { $players }.
+table-players-many = { $count } graczy: { $players }.
+table-spectators = Widzowie: { $spectators }.
 game-leave = Opuść
 game-over = Koniec gry
 game-final-scores = Wyniki końcowe
@@ -207,3 +224,6 @@ predict-entry-2p = { $rank }. { $player } (rating: { $rating }, { $probability }
 predict-unavailable = Prognoza ocen nie jest dostępna.
 predict-need-players = potrzebuje conajmniej 2 luckich graczy do przewidywania
 action-need-more-humans = Potrzeba więcej ludzi
+confirm-leave-game = Czy na pewno chcesz opuścić stół?
+confirm-yes = Tak
+confirm-no = Nie

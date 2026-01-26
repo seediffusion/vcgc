@@ -19,6 +19,9 @@ from .leftrightcenter.game import LeftRightCenterGame
 from .tossup.game import TossUpGame
 from .midnight.game import MidnightGame
 from .ageofheroes.game import AgeOfHeroesGame
+from .fivecarddraw.game import FiveCardDrawGame
+from .holdem.game import HoldemGame
+from .crazyeights.game import CrazyEightsGame
 
 __all__ = [
     "Game",
@@ -40,4 +43,7 @@ __all__ = [
     "TossUpGame",
     "MidnightGame",
     "AgeOfHeroesGame",
+    "FiveCardDrawGame",
+    "HoldemGame",
+    "CrazyEightsGame",
 ]

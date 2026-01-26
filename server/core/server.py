@@ -1,6 +1,8 @@
 """Main server class that ties everything together."""
 
 import asyncio
+import logging
+import sys
 from pathlib import Path
 
 import json
@@ -61,6 +63,7 @@ class Server:
         if locales_dir is None:
             locales_dir = _DEFAULT_LOCALES_DIR
         Localization.init(Path(locales_dir))
+        Localization.preload_bundles()
 
     async def start(self) -> None:
         """Start the server."""
@@ -69,6 +72,11 @@ class Server:
         # Connect to database
         self._db.connect()
         self._auth = AuthManager(self._db)
+
+        # Initialize trust levels for users
+        promoted_user = self._db.initialize_trust_levels()
+        if promoted_user:
+            print(f"User '{promoted_user}' has been promoted to admin (trust level 2).")
 
         # Load existing tables
         self._load_tables()
@@ -189,10 +197,20 @@ class Server:
     def _broadcast_presence_l(
         self, message_id: str, player_name: str, sound: str
     ) -> None:
-        """Broadcast a localized presence announcement to all online users with sound."""
+        """Broadcast a localized presence announcement to all approved online users with sound."""
         for username, user in self._users.items():
+            if not user.approved:
+                continue  # Don't send broadcasts to unapproved users
             user.speak_l(message_id, player=player_name)
             user.play_sound(sound)
+
+    def _broadcast_admin_announcement(self, admin_name: str) -> None:
+        """Broadcast an admin announcement to all approved online users."""
+        for username, user in self._users.items():
+            if not user.approved:
+                continue  # Don't send broadcasts to unapproved users
+            user.speak_l("user-is-admin", player=admin_name)
+            user.play_sound("ranked.ogg")
 
     async def _on_client_message(self, client: ClientConnection, packet: dict) -> None:
         """Handle incoming message from client."""
@@ -205,16 +223,28 @@ class Server:
         elif not client.authenticated:
             # Ignore non-auth packets from unauthenticated clients
             return
-        elif packet_type == "menu":
-            await self._handle_menu(client, packet)
-        elif packet_type == "keybind":
-            await self._handle_keybind(client, packet)
-        elif packet_type == "editbox":
-            await self._handle_editbox(client, packet)
-        elif packet_type == "chat":
-            await self._handle_chat(client, packet)
         elif packet_type == "ping":
+            # Always allow ping to keep connection alive
             await self._handle_ping(client)
+        else:
+            # For all other packets, check if user is approved
+            user = self._users.get(client.username)
+            if user and not user.approved:
+                # Unapproved users can only ping - drop all other packets
+                return
+
+            if packet_type == "menu":
+                await self._handle_menu(client, packet)
+            elif packet_type == "keybind":
+                await self._handle_keybind(client, packet)
+            elif packet_type == "editbox":
+                await self._handle_editbox(client, packet)
+            elif packet_type == "chat":
+                await self._handle_chat(client, packet)
+            elif packet_type == "list_online":
+                await self._handle_list_online(client)
+            elif packet_type == "list_online_with_games":
+                await self._handle_list_online_with_games(client)
 
     async def _handle_authorize(self, client: ClientConnection, packet: dict) -> None:
         """Handle authorization packet."""
@@ -243,6 +273,8 @@ class Server:
         user_record = self._auth.get_user(username)
         locale = user_record.locale if user_record else "en"
         user_uuid = user_record.uuid if user_record else None
+        trust_level = user_record.trust_level if user_record else 1
+        is_approved = user_record.approved if user_record else False
         preferences = UserPreferences()
         if user_record and user_record.preferences_json:
             try:
@@ -250,11 +282,18 @@ class Server:
                 preferences = UserPreferences.from_dict(prefs_data)
             except (json.JSONDecodeError, KeyError):
                 pass  # Use defaults on error
-        user = NetworkUser(username, locale, client, uuid=user_uuid, preferences=preferences)
+        user = NetworkUser(
+            username, locale, client, uuid=user_uuid, preferences=preferences,
+            trust_level=trust_level, approved=is_approved
+        )
         self._users[username] = user
 
         # Broadcast online announcement to all users (including the new user)
         self._broadcast_presence_l("user-online", username, "online.ogg")
+
+        # If user is an admin, announce that as well
+        if trust_level == 2:
+            self._broadcast_admin_announcement(username)
 
         # Send success response
         await client.send(
@@ -267,6 +306,12 @@ class Server:
 
         # Send game list
         await self._send_game_list(client)
+
+        # Check if user is approved
+        if not user.approved:
+            # User needs approval - show waiting screen
+            self._show_waiting_for_approval(user)
+            return
 
         # Check if user is in a table
         table = self._tables.find_user_table(username)
@@ -318,18 +363,6 @@ class Server:
                 "text": "Username already taken. Please choose a different username."
             })
 
-    # Available languages
-    LANGUAGES = {
-        "en": "English",
-        "pt": "Português",
-        "zh": "中文",
-    }
-    LANGUAGES_ENGLISH = {
-        "en": "English",
-        "pt": "Portuguese",
-        "zh": "Chinese",
-    }
-
     async def _send_game_list(self, client: ClientConnection) -> None:
         """Send the list of available games to the client."""
         games = []
@@ -344,8 +377,7 @@ class Server:
         await client.send(
             {
                 "type": "update_options_lists",
-                "games": games,
-                "languages": self.LANGUAGES,
+                "games": games
             }
         )
 
@@ -353,6 +385,10 @@ class Server:
         """Show the main menu to a user."""
         items = [
             MenuItem(text=Localization.get(user.locale, "play"), id="play"),
+            MenuItem(
+                text=Localization.get(user.locale, "view-active-tables"),
+                id="active_tables",
+            ),
             MenuItem(
                 text=Localization.get(user.locale, "saved-tables"), id="saved_tables"
             ),
@@ -363,8 +399,13 @@ class Server:
                 text=Localization.get(user.locale, "my-stats"), id="my_stats"
             ),
             MenuItem(text=Localization.get(user.locale, "options"), id="options"),
-            MenuItem(text=Localization.get(user.locale, "logout"), id="logout"),
         ]
+        # Add administration menu for admins
+        if user.trust_level >= 2:
+            items.append(
+                MenuItem(text=Localization.get(user.locale, "administration"), id="administration")
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "logout"), id="logout"))
         user.show_menu(
             "main_menu",
             items,
@@ -428,14 +469,27 @@ class Server:
         ]
 
         for table in tables:
-            player_count = table.player_count
+            member_count = len(table.members)
+            member_names = [
+                member.username
+                for member in table.members
+                if member.username != table.host
+            ]
+            members_str = Localization.format_list_and(user.locale, member_names)
+            if member_count == 1:
+                listing_key = "table-listing-one"
+            elif member_names:
+                listing_key = "table-listing-with"
+            else:
+                listing_key = "table-listing"
             items.append(
                 MenuItem(
                     text=Localization.get(
                         user.locale,
-                        "table-listing",
+                        listing_key,
                         host=table.host,
-                        count=player_count,
+                        count=member_count,
+                        members=members_str,
                     ),
                     id=f"table_{table.table_id}",
                 )
@@ -455,15 +509,62 @@ class Server:
             "game_name": game_name,
         }
 
+    def _show_active_tables_menu(self, user: NetworkUser) -> None:
+        """Show available tables across all games."""
+        tables = self._tables.get_waiting_tables()
+        items: list[MenuItem] = []
+        for table in tables:
+            game_class = get_game_class(table.game_type)
+            game_name = (
+                Localization.get(user.locale, game_class.get_name_key())
+                if game_class
+                else table.game_type
+            )
+            member_count = len(table.members)
+            member_names = [
+                member.username
+                for member in table.members
+                if member.username != table.host
+            ]
+            members_str = Localization.format_list_and(user.locale, member_names)
+            if member_count == 1:
+                listing_key = "table-listing-game-one"
+            elif member_names:
+                listing_key = "table-listing-game-with"
+            else:
+                listing_key = "table-listing-game"
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        listing_key,
+                        game=game_name,
+                        host=table.host,
+                        count=member_count,
+                        members=members_str,
+                    ),
+                    id=f"table_{table.table_id}",
+                )
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            "active_tables_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {"menu": "active_tables_menu"}
+
     # Dice keeping style display names
     DICE_KEEPING_STYLES = {
-        DiceKeepingStyle.PLAYPALACE: "PlayPalace style",
-        DiceKeepingStyle.QUENTIN_C: "Quentin C style",
+        DiceKeepingStyle.PLAYPALACE: "dice-keeping-style-indexes",
+        DiceKeepingStyle.QUENTIN_C: "dice-keeping-style-values",
     }
 
     def _show_options_menu(self, user: NetworkUser) -> None:
         """Show options menu."""
-        current_lang = self.LANGUAGES.get(user.locale, "English")
+        languages = Localization.get_available_languages(user.locale, fallback= user.locale)
+        current_lang = languages.get(user.locale, user.locale)
         prefs = user.preferences
 
         # Turn sound option
@@ -479,9 +580,10 @@ class Server:
         )
 
         # Dice keeping style option
-        dice_style_name = self.DICE_KEEPING_STYLES.get(
-            prefs.dice_keeping_style, "PlayPalace style"
+        style_key = self.DICE_KEEPING_STYLES.get(
+            prefs.dice_keeping_style, "dice-keeping-style-indexes"
         )
+        dice_style_name = Localization.get(user.locale, style_key)
 
         items = [
             MenuItem(
@@ -520,13 +622,17 @@ class Server:
 
     def _show_language_menu(self, user: NetworkUser) -> None:
         """Show language selection menu."""
+        # Get languages in their native names and in user's locale for comparison
+        languages = Localization.get_available_languages(fallback = user.locale)
+        localized_languages = Localization.get_available_languages(user.locale, fallback= user.locale)
+
         items = []
-        for lang_code, lang_name in self.LANGUAGES.items():
+        for lang_code, lang_name in languages.items():
             prefix = "* " if lang_code == user.locale else ""
-            english_name = self.LANGUAGES_ENGLISH.get(lang_code, lang_name)
-            # Add English name in parentheses if different from native name
-            if english_name != lang_name:
-                display = f"{prefix}{lang_name} ({english_name})"
+            localized_name = localized_languages.get(lang_code, lang_name)
+            # Show localized name first, then native name in parentheses if different
+            if localized_name != lang_name:
+                display = f"{prefix}{localized_name} ({lang_name})"
             else:
                 display = f"{prefix}{lang_name}"
             items.append(MenuItem(text=display, id=f"lang_{lang_code}"))
@@ -538,6 +644,69 @@ class Server:
             escape_behavior=EscapeBehavior.SELECT_LAST,
         )
         self._user_states[user.username] = {"menu": "language_menu"}
+
+    def _show_admin_menu(self, user: NetworkUser) -> None:
+        """Show administration menu."""
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "account-approval"),
+                id="account_approval",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            "admin_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {"menu": "admin_menu"}
+
+    def _show_account_approval_menu(self, user: NetworkUser) -> None:
+        """Show account approval menu with pending users."""
+        pending = self._db.get_pending_users()
+
+        if not pending:
+            user.speak_l("no-pending-accounts")
+            self._show_admin_menu(user)
+            return
+
+        items = []
+        for pending_user in pending:
+            items.append(MenuItem(text=pending_user.username, id=f"pending_{pending_user.username}"))
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            "account_approval_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {"menu": "account_approval_menu"}
+
+    def _show_pending_user_actions_menu(self, user: NetworkUser, pending_username: str) -> None:
+        """Show actions for a pending user (approve, decline)."""
+        items = [
+            MenuItem(text=Localization.get(user.locale, "approve-account"), id="approve"),
+            MenuItem(text=Localization.get(user.locale, "decline-account"), id="decline"),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            "pending_user_actions_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {
+            "menu": "pending_user_actions_menu",
+            "pending_username": pending_username,
+        }
+
+    def _show_waiting_for_approval(self, user: NetworkUser) -> None:
+        """Show waiting for approval screen to unapproved user."""
+        user.speak_l("waiting-for-approval")
+        user.clear_ui()
+        self._user_states[user.username] = {"menu": "waiting_for_approval"}
 
     def _show_saved_tables_menu(self, user: NetworkUser) -> None:
         """Show saved tables menu."""
@@ -618,6 +787,8 @@ class Server:
             await self._handle_games_selection(user, selection_id, state)
         elif current_menu == "tables_menu":
             await self._handle_tables_selection(user, selection_id, state)
+        elif current_menu == "active_tables_menu":
+            await self._handle_active_tables_selection(user, selection_id)
         elif current_menu == "join_menu":
             await self._handle_join_selection(user, selection_id, state)
         elif current_menu == "options_menu":
@@ -640,6 +811,14 @@ class Server:
             await self._handle_my_stats_selection(user, selection_id, state)
         elif current_menu == "my_game_stats":
             await self._handle_my_game_stats_selection(user, selection_id, state)
+        elif current_menu == "online_users":
+            self._restore_previous_menu(user, state)
+        elif current_menu == "admin_menu":
+            await self._handle_admin_menu_selection(user, selection_id)
+        elif current_menu == "account_approval_menu":
+            await self._handle_account_approval_selection(user, selection_id)
+        elif current_menu == "pending_user_actions_menu":
+            await self._handle_pending_user_actions_selection(user, selection_id, state)
 
     async def _handle_main_menu_selection(
         self, user: NetworkUser, selection_id: str
@@ -647,6 +826,8 @@ class Server:
         """Handle main menu selection."""
         if selection_id == "play":
             self._show_categories_menu(user)
+        elif selection_id == "active_tables":
+            self._show_active_tables_menu(user)
         elif selection_id == "saved_tables":
             self._show_saved_tables_menu(user)
         elif selection_id == "leaderboards":
@@ -655,6 +836,9 @@ class Server:
             self._show_my_stats_menu(user)
         elif selection_id == "options":
             self._show_options_menu(user)
+        elif selection_id == "administration":
+            if user.trust_level >= 2:
+                self._show_admin_menu(user)
         elif selection_id == "logout":
             user.speak_l("goodbye")
             await user.connection.send({"type": "disconnect", "reconnect": False})
@@ -686,8 +870,9 @@ class Server:
         """Show dice keeping style selection menu."""
         items = []
         current_style = user.preferences.dice_keeping_style
-        for style, name in self.DICE_KEEPING_STYLES.items():
+        for style, name_key in self.DICE_KEEPING_STYLES.items():
             prefix = "* " if style == current_style else ""
+            name = Localization.get(user.locale, name_key)
             items.append(MenuItem(text=f"{prefix}{name}", id=f"style_{style.value}"))
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
@@ -707,7 +892,8 @@ class Server:
             style = DiceKeepingStyle.from_str(style_value)
             user.preferences.dice_keeping_style = style
             self._save_user_preferences(user)
-            style_name = self.DICE_KEEPING_STYLES.get(style, "PlayPalace style")
+            style_key = self.DICE_KEEPING_STYLES.get(style, "dice-keeping-style-indexes")
+            style_name = Localization.get(user.locale, style_key)
             user.speak_l("dice-keeping-style-changed", style=style_name)
             self._show_options_menu(user)
             return
@@ -725,10 +911,11 @@ class Server:
         """Handle language selection."""
         if selection_id.startswith("lang_"):
             lang_code = selection_id[5:]  # Remove "lang_" prefix
-            if lang_code in self.LANGUAGES:
+            languages = Localization.get_available_languages(fallback= user.locale)
+            if lang_code in languages:
                 user.set_locale(lang_code)
                 self._db.update_user_locale(user.username, lang_code)
-                user.speak_l("language-changed", language=self.LANGUAGES[lang_code])
+                user.speak_l("language-changed", language=languages[lang_code])
                 self._show_options_menu(user)
                 return
         # Back or invalid
@@ -752,7 +939,7 @@ class Server:
             game_type = selection_id[5:]  # Remove "game_" prefix
             self._show_tables_menu(user, game_type)
         elif selection_id == "back":
-            self._show_categories_menu(user)
+            self._show_main_menu(user)
 
     async def _handle_tables_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -793,26 +980,7 @@ class Server:
             table_id = selection_id[6:]  # Remove "table_" prefix
             table = self._tables.get_table(table_id)
             if table:
-                # Show join options
-                items = [
-                    MenuItem(
-                        text=Localization.get(user.locale, "join-as-player"),
-                        id="join_player",
-                    ),
-                    MenuItem(
-                        text=Localization.get(user.locale, "join-as-spectator"),
-                        id="join_spectator",
-                    ),
-                    MenuItem(text=Localization.get(user.locale, "back"), id="back"),
-                ]
-                user.show_menu(
-                    "join_menu", items, escape_behavior=EscapeBehavior.SELECT_LAST
-                )
-                self._user_states[user.username] = {
-                    "menu": "join_menu",
-                    "table_id": table_id,
-                    "game_type": game_type,
-                }
+                self._auto_join_table(user, table, game_type)
             else:
                 user.speak_l("table-not-exists")
                 self._show_tables_menu(user, game_type)
@@ -828,6 +996,71 @@ class Server:
             else:
                 self._show_categories_menu(user)
 
+    async def _handle_active_tables_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle active tables menu selection."""
+        if selection_id.startswith("table_"):
+            table_id = selection_id[6:]
+            table = self._tables.get_table(table_id)
+            if table:
+                self._auto_join_table(user, table, table.game_type)
+            else:
+                user.speak_l("table-not-exists")
+                self._show_active_tables_menu(user)
+        elif selection_id == "back":
+            self._show_main_menu(user)
+
+    def _auto_join_table(
+        self, user: NetworkUser, table: "Table", game_type: str
+    ) -> None:
+        """Automatically join a table as player or spectator.
+
+        Joins as player if:
+        - Game has not started yet (status is "waiting")
+        - Game has room for more players (less than max_players)
+
+        Otherwise joins as spectator.
+        """
+        game = table.game
+        if not game:
+            user.speak_l("table-not-exists")
+            self._show_tables_menu(user, game_type)
+            return
+
+        table_id = table.table_id
+
+        # Determine if user can join as player
+        can_join_as_player = (
+            game.status != "playing"
+            and len(game.players) < game.get_max_players()
+        )
+
+        if can_join_as_player:
+            # Join as player
+            table.add_member(user.username, user, as_spectator=False)
+            game.add_player(user.username, user)
+            game.broadcast_l("table-joined", player=user.username)
+            game.broadcast_sound("join.ogg")
+            game.rebuild_all_menus()
+        else:
+            # Join as spectator
+            table.add_member(user.username, user, as_spectator=True)
+            game.add_spectator(user.username, user)
+            user.speak_l("spectator-joined", host=table.host)
+            game.broadcast_l("now-spectating", player=user.username)
+            game.broadcast_sound("join_spectator.ogg")
+            game.rebuild_all_menus()
+
+        self._user_states[user.username] = {"menu": "in_game", "table_id": table_id}
+
+    def _return_from_join_menu(self, user: NetworkUser, state: dict) -> None:
+        """Return to the appropriate tables menu after join."""
+        if state.get("return_menu") == "active_tables_menu":
+            self._show_active_tables_menu(user)
+        else:
+            self._show_tables_menu(user, state.get("game_type", ""))
+
     async def _handle_join_selection(
         self, user: NetworkUser, selection_id: str, state: dict
     ) -> None:
@@ -837,7 +1070,7 @@ class Server:
 
         if not table or not table.game:
             user.speak_l("table-not-exists")
-            self._show_tables_menu(user, state.get("game_type", ""))
+            self._return_from_join_menu(user, state)
             return
 
         game = table.game
@@ -868,7 +1101,11 @@ class Server:
                 else:
                     # No matching player - join as spectator instead
                     table.add_member(user.username, user, as_spectator=True)
+                    game.add_spectator(user.username, user)
                     user.speak_l("spectator-joined", host=table.host)
+                    game.broadcast_l("now-spectating", player=user.username)
+                    game.broadcast_sound("join_spectator.ogg")
+                    game.rebuild_all_menus()
                     self._user_states[user.username] = {
                         "menu": "in_game",
                         "table_id": table_id,
@@ -877,7 +1114,7 @@ class Server:
 
             if len(game.players) >= game.get_max_players():
                 user.speak_l("table-full")
-                self._show_tables_menu(user, state.get("game_type", ""))
+                self._return_from_join_menu(user, state)
                 return
 
             # Add player to game
@@ -890,12 +1127,15 @@ class Server:
 
         elif selection_id == "join_spectator":
             table.add_member(user.username, user, as_spectator=True)
+            game.add_spectator(user.username, user)
             user.speak_l("spectator-joined", host=table.host)
-            # TODO: spectator viewing - for now just track membership
+            game.broadcast_l("now-spectating", player=user.username)
+            game.broadcast_sound("join_spectator.ogg")
+            game.rebuild_all_menus()
             self._user_states[user.username] = {"menu": "in_game", "table_id": table_id}
 
         elif selection_id == "back":
-            self._show_tables_menu(user, state.get("game_type", ""))
+            self._return_from_join_menu(user, state)
 
     async def _handle_saved_tables_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -1904,6 +2144,76 @@ class Server:
             self._show_my_stats_menu(user)
         # Other selections (stats entries) are informational only
 
+    async def _handle_admin_menu_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle admin menu selection."""
+        if selection_id == "account_approval":
+            self._show_account_approval_menu(user)
+        elif selection_id == "back":
+            self._show_main_menu(user)
+
+    async def _handle_account_approval_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle account approval menu selection."""
+        if selection_id == "back":
+            self._show_admin_menu(user)
+        elif selection_id.startswith("pending_"):
+            pending_username = selection_id[8:]  # Remove "pending_" prefix
+            self._show_pending_user_actions_menu(user, pending_username)
+
+    async def _handle_pending_user_actions_selection(
+        self, user: NetworkUser, selection_id: str, state: dict
+    ) -> None:
+        """Handle pending user actions menu selection."""
+        pending_username = state.get("pending_username")
+        if not pending_username:
+            self._show_account_approval_menu(user)
+            return
+
+        if selection_id == "approve":
+            await self._approve_user(user, pending_username)
+        elif selection_id == "decline":
+            await self._decline_user(user, pending_username)
+        elif selection_id == "back":
+            self._show_account_approval_menu(user)
+
+    async def _approve_user(self, admin: NetworkUser, username: str) -> None:
+        """Approve a pending user account."""
+        if self._db.approve_user(username):
+            admin.speak_l("account-approved", player=username)
+
+            # Check if the user is online and waiting for approval
+            waiting_user = self._users.get(username)
+            if waiting_user:
+                # Update the user's approved status so they can now interact
+                waiting_user.set_approved(True)
+
+                waiting_state = self._user_states.get(username, {})
+                if waiting_state.get("menu") == "waiting_for_approval":
+                    # User is online and waiting - welcome them and show main menu
+                    waiting_user.speak_l("account-approved-welcome")
+                    waiting_user.play_sound("welcome.ogg")
+                    self._show_main_menu(waiting_user)
+
+        self._show_account_approval_menu(admin)
+
+    async def _decline_user(self, admin: NetworkUser, username: str) -> None:
+        """Decline and delete a pending user account."""
+        # Check if the user is online first
+        waiting_user = self._users.get(username)
+
+        if self._db.delete_user(username):
+            admin.speak_l("account-declined", player=username)
+
+            # If user is online, disconnect them
+            if waiting_user:
+                waiting_user.speak_l("account-declined-goodbye")
+                await waiting_user.connection.send({"type": "disconnect", "reconnect": False})
+
+        self._show_account_approval_menu(admin)
+
     def on_table_destroy(self, table) -> None:
         """Handle table destruction. Called by TableManager."""
         if not table.game:
@@ -2015,37 +2325,149 @@ class Server:
         if not username:
             return
 
-        convo = packet.get("convo", "table")
+        convo = packet.get("convo", "local")
         message = packet.get("message", "")
-        language = packet.get("language", "English")
+        language = packet.get("language", "Other")
 
-        if convo == "table":
+        chat_packet = {
+            "type": "chat",
+            "convo": convo,
+            "sender": username,
+            "message": message,
+            "language": language,
+        }
+
+        if convo == "local":
             table = self._tables.find_user_table(username)
             if table:
                 for member_name in [m.username for m in table.members]:
                     user = self._users.get(member_name)
-                    if user:
-                        await user.connection.send(
-                            {
-                                "type": "chat",
-                                "convo": "table",
-                                "sender": username,
-                                "message": message,
-                                "language": language,
-                            }
-                        )
+                    if user and user.approved:  # Only send to approved users
+                        await user.connection.send(chat_packet)
         elif convo == "global":
-            # Broadcast to all users
-            if self._ws_server:
-                await self._ws_server.broadcast(
-                    {
-                        "type": "chat",
-                        "convo": "global",
-                        "sender": username,
-                        "message": message,
-                        "language": language,
-                    }
+            # Broadcast to all approved users only
+            for user in self._users.values():
+                if user.approved:
+                    await user.connection.send(chat_packet)
+
+    def _get_online_usernames(self) -> list[str]:
+        """Return sorted list of online usernames."""
+        return sorted(self._users.keys(), key=str.lower)
+
+    def _format_online_users_lines(self, user: NetworkUser) -> list[str]:
+        """Format online users with game names for menu display."""
+        lines: list[str] = []
+        for username in self._get_online_usernames():
+            online_user = self._users.get(username)
+            # Check if user is waiting for approval
+            if online_user and not online_user.approved:
+                status = Localization.get(user.locale, "online-user-waiting-approval")
+                lines.append(f"{username}: {status}")
+                continue
+
+            table = self._tables.find_user_table(username)
+            if table:
+                game_class = get_game_class(table.game_type)
+                game_name = (
+                    Localization.get(user.locale, game_class.get_name_key())
+                    if game_class
+                    else table.game_type
                 )
+                lines.append(f"{username}: {game_name}")
+            else:
+                status = Localization.get(user.locale, "online-user-not-in-game")
+                lines.append(f"{username}: {status}")
+        if not lines:
+            lines.append(Localization.get(user.locale, "online-users-none"))
+        return lines
+
+    def _show_online_users_menu(self, user: NetworkUser) -> None:
+        """Show online users with games in a read-only menu."""
+        current_state = self._user_states.get(user.username, {})
+        previous_menu_id = current_state.get("menu")
+        previous_menu = None
+        if previous_menu_id:
+            current_menus = getattr(user, "_current_menus", {})
+            previous_menu = current_menus.get(previous_menu_id)
+
+        items = [
+            MenuItem(text=line, id="online_user")
+            for line in self._format_online_users_lines(user)
+        ]
+        user.show_menu(
+            "online_users",
+            items,
+            multiletter=False,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+            position=0,
+        )
+        self._user_states[user.username] = {
+            "menu": "online_users",
+            "return_menu_id": previous_menu_id,
+            "return_menu": previous_menu,
+            "return_state": dict(current_state),
+        }
+
+    def _restore_previous_menu(self, user: NetworkUser, state: dict) -> None:
+        """Restore the previous menu after closing the online users list."""
+        previous_menu_id = state.get("return_menu_id")
+        previous_menu = state.get("return_menu")
+        if not previous_menu_id or not previous_menu:
+            self._show_main_menu(user)
+            return
+
+        user.show_menu(
+            previous_menu_id,
+            previous_menu.get("items", []),
+            multiletter=previous_menu.get("multiletter_enabled", True),
+            escape_behavior=EscapeBehavior(previous_menu.get("escape_behavior", "keybind")),
+            position=previous_menu.get("position"),
+            grid_enabled=previous_menu.get("grid_enabled", False),
+            grid_width=previous_menu.get("grid_width", 1),
+        )
+        restored_state = dict(state.get("return_state", {}))
+        restored_state["menu"] = previous_menu_id
+        self._user_states[user.username] = restored_state
+
+    async def _handle_list_online(self, client: ClientConnection) -> None:
+        """Handle request for online users list."""
+        username = client.username
+        if not username:
+            return
+
+        user = self._users.get(username)
+        if not user:
+            return
+
+        online = self._get_online_usernames()
+        count = len(online)
+        if count == 0:
+            user.speak_l("online-users-none")
+            return
+        users_str = Localization.format_list_and(user.locale, online)
+        if count == 1:
+            user.speak_l("online-users-one", users=users_str)
+        else:
+            user.speak_l("online-users-many", count=count, users=users_str)
+
+    async def _handle_list_online_with_games(self, client: ClientConnection) -> None:
+        """Handle request for online users list with game info."""
+        username = client.username
+        if not username:
+            return
+
+        user = self._users.get(username)
+        if not user:
+            return
+
+        table = self._tables.find_user_table(username)
+        if table and table.game:
+            player = table.game.get_player_by_id(user.uuid)
+            if player:
+                table.game.status_box(player, self._format_online_users_lines(user))
+                return
+
+        self._show_online_users_menu(user)
 
     async def _handle_ping(self, client: ClientConnection) -> None:
         """Handle ping request - respond immediately with pong."""
@@ -2066,6 +2488,37 @@ async def run_server(
         ssl_cert: Path to SSL certificate file (for WSS support)
         ssl_key: Path to SSL private key file (for WSS support)
     """
+    logging.basicConfig(
+        filename="errors.log",
+        level=logging.ERROR,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
+    def _log_uncaught(exc_type, exc, tb):
+        if exc_type in (KeyboardInterrupt, asyncio.CancelledError):
+            return
+        logging.getLogger("playpalace").exception(
+            "Uncaught exception", exc_info=(exc_type, exc, tb)
+        )
+
+    sys.excepthook = _log_uncaught
+    loop = asyncio.get_running_loop()
+
+    def _asyncio_exception_handler(loop, context):
+        exc = context.get("exception")
+        if isinstance(exc, asyncio.CancelledError):
+            return
+        if exc:
+            logging.getLogger("playpalace").exception(
+                "Asyncio exception", exc_info=exc
+            )
+        else:
+            logging.getLogger("playpalace").error(
+                "Asyncio error: %s", context.get("message")
+            )
+
+    loop.set_exception_handler(_asyncio_exception_handler)
+
     server = Server(host=host, port=port, ssl_cert=ssl_cert, ssl_key=ssl_key)
     await server.start()
 

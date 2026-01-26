@@ -2,9 +2,15 @@
 
 PlayPalace is an accessible online gaming platform. This repository contains both the server (v11, modern) and client (ported from v10).
 
+## Contact
+
+If you have questions, want realtime information, or plan to develop for the project, you can join the [Play Palace discord server](https://discord.gg/PBPZegdsTN) here.
+
+This is the primary place for discussion about the project.
+
 ## Quick Start
 
-You need Python 3.11 or later. We use [uv](https://docs.astral.sh/uv/) for dependency management on the server.
+You need Python 3.11 or later. We use [uv](https://docs.astral.sh/uv/) for dependency management on the server and client.
 
 ### Running the Server
 
@@ -13,6 +19,8 @@ cd server
 uv sync
 uv run python main.py
 ```
+
+To run a local server with the default configuration, you can launch the "run_server.bat" file as a shortcut.
 
 The server starts on port 8000 by default. Use `--help` to see all options:
 
@@ -52,12 +60,16 @@ When SSL is enabled, the server will report `wss://` instead of `ws://` in its s
 
 ```bash
 cd client
-python client.py
+uv sync
+uv run python client.py
 ```
 
-The client requires wxPython and a few other dependencies from v10. It connects to localhost:8000 by default.
+You can launch the "run_client.bat" file as a shortcut.
 
-The client supports both `ws://` and `wss://` connections. When connecting to a server with SSL enabled, use the "Over Internet" option and enter the server address with the `wss://` prefix (e.g., `wss://example.com`). The client will handle SSL certificate validation automatically.
+The client requires wxPython and a few other dependencies from v10.
+
+The client supports both `ws://` and `wss://` connections. When connecting to a server with SSL enabled, enter the server address with the `wss://` prefix (e.g., `wss://example.com`). The client will handle SSL certificate validation automatically.
+Use the **Server Manager** button on the login screen to add/edit servers (name, host, port, notes) and manage saved accounts for each server. You can add `localhost` for local testing.
 
 ## Project Structure
 
@@ -105,6 +117,8 @@ See also: CLI tool.
 
 ## Available Games
 
+Note: many games are still works in progress.
+
 - **Pig** - A push-your-luck dice game
 - **Threes** - Another push-your-luck game, with a little more complexity
 - **Scopa** - A complex game about collecting cards
@@ -112,6 +126,14 @@ See also: CLI tool.
 - **Chaos Bear** - Another RB Play Center game about getting away from a bear
 - **Mile by Mile** - A racing card game
 - **Farkle** - A dice game somewhat reminiscent of Yahtzee
+- **Yahtzee** - Classic dice game with 13 scoring categories
+- **Ninety Nine** - Card game about keeping the running total under 99
+- **Pirates of the Lost Seas** - RPG adventure with sailing, combat, and leveling
+- **Tradeoff** - Dice trading game with set-based scoring
+- **Toss Up** - Push-your-luck dice game with green/yellow/red dice
+- **1-4-24** - Dice game where you keep 1 and 4, score the rest
+- **Left Right Center** - Dice-and-chip elimination game
+- **Age of Heroes** - Civilization-building card game (cities, monument, or last standing)
 
 ## CLI Tool
 

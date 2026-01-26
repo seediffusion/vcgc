@@ -24,6 +24,16 @@ class Localization:
         cls._bundles = {}
 
     @classmethod
+    def preload_bundles(cls) -> None:
+        """Pre-load all locale bundles at startup."""
+        if cls._locales_dir is None:
+            return
+
+        for locale_dir in cls._locales_dir.iterdir():
+            if locale_dir.is_dir():
+                cls._get_bundle(locale_dir.name)
+
+    @classmethod
     def _get_bundle(cls, locale: str) -> FluentBundle:
         """Get or create a bundle for a locale."""
         if locale in cls._bundles:
@@ -110,6 +120,58 @@ class Localization:
             Formatted list string (e.g., "A, B, or C").
         """
         return format_list(items, style="or", locale=locale)
+
+    @classmethod
+    def get_available_languages(
+        cls, display_language: str = "", *, fallback: str = "en"
+    ) -> dict[str, str]:
+        """
+        Get a dictionary of available languages.
+
+        Args:
+            display_language: The locale to use for displaying language names.
+                              If empty, each language name is shown in its own
+                              language (e.g., "English" for en, "中文" for zh).
+            fallback: The locale to use if a language name is not found
+                             in the display language. Defaults to "en".
+
+        Returns:
+            Dictionary mapping language codes to language names.
+        """
+        if cls._locales_dir is None:
+            raise RuntimeError(
+                "Localization not initialized. Call Localization.init() first."
+            )
+
+        result = {}
+
+        # Get list of valid locale directories
+        locales = [
+            locale_dir.name
+            for locale_dir in cls._locales_dir.iterdir()
+            if locale_dir.is_dir()
+        ]
+
+        for locale_code in sorted(locales):
+            message_id = f"language-{locale_code}"
+            if display_language:
+                # Use the display language's bundle for all names
+                name = cls.get(display_language, message_id)
+            else:
+                # Use each locale's own bundle for its name
+                name = cls.get(locale_code, message_id)
+
+            # If translation not found, try fallback locale
+            if name == message_id  and fallback != display_language:
+                name = cls.get(fallback, message_id)
+
+            # If fallback is not "en" and still not found, try "en"
+            if name == message_id and fallback != "en":
+                name = cls.get("en", message_id)
+
+            result[locale_code] = name
+
+        return result
 
 
 def get_message(locale: str, message_id: str, **kwargs) -> str:

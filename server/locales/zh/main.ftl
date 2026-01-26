@@ -4,6 +4,7 @@
 category-card-games = 纸牌游戏
 category-dice-games = 骰子游戏
 category-rb-play-center = RB Play Center
+category-poker = 扑克
 category-uncategorized = 未分类
 
 # 菜单标题
@@ -14,6 +15,7 @@ tables-menu-title = 可用桌台
 
 # 菜单项目
 play = 开始游戏
+view-active-tables = 查看活跃桌台
 options = 设置
 logout = 退出登录
 back = 返回
@@ -27,6 +29,7 @@ remove-bot = 移除机器人
 actions-menu = 操作菜单
 save-table = 保存桌台
 whose-turn = 轮到谁
+whos-at-table = 桌上都有谁
 check-scores = 查看分数
 check-scores-detailed = 详细分数
 
@@ -37,17 +40,27 @@ table-left = { $player } 离开了桌台。
 new-host = { $player } 现在是主持人。
 waiting-for-players = 等待玩家中。当前 { $current }/{ $min } 最少，{ $max } 最多。
 game-starting = 游戏开始！
-table-listing = { $host } 的桌台 ({ $count } 位玩家)
+table-listing = { $host } 的桌台 ({ $count } 位用户)
+table-listing-one = { $host } 的桌台 ({ $count } 位用户)
+table-listing-with = { $host } 的桌台 ({ $count } 位用户) 与 { $members }
+table-listing-game = { $game }: { $host } 的桌台 ({ $count } 位用户)
+table-listing-game-one = { $game }: { $host } 的桌台 ({ $count } 位用户)
+table-listing-game-with = { $game }: { $host } 的桌台 ({ $count } 位用户) 与 { $members }
 table-not-exists = 桌台已不存在。
 table-full = 桌台已满。
 player-replaced-by-bot = { $player } 离开，已由机器人替代。
 player-took-over = { $player } 接管了机器人。
 spectator-joined = 已作为观众加入 { $host } 的桌台。
+table-no-players = 没有玩家。
+table-players-one = { $count } 位玩家：{ $players }。
+table-players-many = { $count } 位玩家：{ $players }。
+table-spectators = 观众：{ $spectators }。
 
 # 观众模式
 spectate = 观战
 now-playing = { $player } 现在参与游戏。
 now-spectating = { $player } 现在观战。
+spectator-left = { $player } 停止观战。
 
 # 通用
 welcome = 欢迎来到 PlayPalace！
@@ -56,10 +69,12 @@ goodbye = 再见！
 # 用户在线状态公告
 user-online = { $player } 上线了。
 user-offline = { $player } 下线了。
+online-users-none = 没有用户在线。
+online-users-one = 1 位用户: { $users }
+online-users-many = { $count } 位用户: { $users }
 
 # 设置
 language = 语言
-language-english = English
 language-option = 语言：{ $language }
 language-changed = 语言已设置为 { $language }。
 
@@ -74,6 +89,8 @@ turn-sound-option = 回合提示音：{ $status }
 clear-kept-option = 掷骰时清除保留的骰子：{ $status }
 dice-keeping-style-option = 骰子保留风格：{ $style }
 dice-keeping-style-changed = 骰子保留风格已设置为 { $style }。
+dice-keeping-style-indexes = 骰子索引
+dice-keeping-style-values = 骰子点数
 
 # 机器人名称
 cancel = 取消
@@ -161,3 +178,6 @@ predict-entry-2p = { $rank }. { $player }（评分：{ $rating }，{ $probabilit
 predict-unavailable = 评分预测不可用。
 predict-need-players = 需要至少2名人类玩家才能进行预测。
 action-need-more-humans = 需要更多人类玩家。
+confirm-leave-game = 确定要离开桌子吗？
+confirm-yes = 是
+confirm-no = 否
